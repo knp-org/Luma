@@ -9,7 +9,7 @@ echo "Starting Luma installation..."
 # 1. Install System Dependencies
 echo "Installing system dependencies..."
 sudo apt-get update
-sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev
 
 # 2. Check for Node.js
 if ! command -v node &> /dev/null; then
