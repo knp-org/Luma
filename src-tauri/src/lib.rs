@@ -35,6 +35,7 @@ pub fn run() {
             playlist::get_playlists,
             playlist::add_to_playlist,
             playlist::remove_from_playlist,
+            playlist::delete_playlist,
             settings::load_settings,
             settings::save_settings,
             lyrics::get_song_lyrics,

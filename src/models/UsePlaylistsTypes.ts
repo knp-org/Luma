@@ -9,6 +9,7 @@ export interface UsePlaylistsReturn {
     playlists: Playlist[];
     loadPlaylists: () => Promise<void>;
     addToPlaylist: (playlistName: string, songPath: string, keepOpen?: boolean) => Promise<void>;
+    deletePlaylist: (playlistName: string) => Promise<void>;
     isFavorite: boolean;
     handleToggleFavorite: () => Promise<void>;
     menuOpenFor: string | null;

@@ -11,3 +11,5 @@ export { Albums } from './Albums';
 export { AlbumArt } from './AlbumArt';
 export { Analytics } from './Analytics';
 export { SleepTimerMenu } from './SleepTimerMenu';
+export { Modal } from './Modal';
+

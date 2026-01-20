@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
+import { useModal } from '../hooks/useModal';
+
 
 interface SettingsProps {
     path: string;
@@ -13,6 +15,7 @@ interface SettingsProps {
 }
 
 export function Settings({ path, seekInterval, onSave, scanMusic, onClearCache, loading, progress, cacheSize }: SettingsProps) {
+    const { showConfirm } = useModal();
     const [localPath, setLocalPath] = useState(path);
     const [localSeek, setLocalSeek] = useState(seekInterval);
     const [themeMock, setThemeMock] = useState(true);
@@ -152,8 +155,8 @@ export function Settings({ path, seekInterval, onSave, scanMusic, onClearCache, 
                             <p className="text-xs text-white/40">Clear library data and thumbnails ({formatSize(cacheSize)})</p>
                         </div>
                         <button
-                            onClick={() => {
-                                if (confirm("Are you sure? This will reset your library metadata and requires a re-sync. Your music files will NOT be deleted.")) {
+                            onClick={async () => {
+                                if (await showConfirm("Are you sure? This will reset your library metadata and requires a re-sync. Your music files will NOT be deleted.")) {
                                     onClearCache();
                                 }
                             }}

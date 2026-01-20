@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Song, AppSettings, UseLibraryReturn } from "../models";
+import { useModal } from "./useModal";
 
 export function useLibrary(): UseLibraryReturn {
+    const { showAlert } = useModal();
     const [songs, setSongs] = useState<Song[]>([]);
     const [loading, setLoading] = useState(false);
     const [path, setPath] = useState("");
@@ -65,7 +67,7 @@ export function useLibrary(): UseLibraryReturn {
             setSongs(result);
         } catch (e) {
             console.error(e);
-            alert("Error scanning: " + e);
+            showAlert("Error scanning: " + e, "Error");
         }
         setLoading(false);
         setSyncProgress(null);
@@ -78,7 +80,7 @@ export function useLibrary(): UseLibraryReturn {
             setSongs([]);
         } catch (e) {
             console.error(e);
-            alert("Failed to clear cache: " + e);
+            showAlert("Failed to clear cache: " + e, "Error");
         }
         refreshCacheSize();
     }

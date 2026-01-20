@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Song } from '../types';
 import { AlbumArt } from './AlbumArt';
+import { useModal } from '../hooks/useModal';
+
 
 interface SongInfoModalProps {
     song: Song;
@@ -18,6 +20,8 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
     const [editedYear, setEditedYear] = useState(song.year?.toString() || "");
     const [editedTrack, setEditedTrack] = useState(song.track_number?.toString() || "");
     const [isSaving, setIsSaving] = useState(false);
+    const { showAlert } = useModal();
+
 
     async function handleSave() {
         setIsSaving(true);
@@ -50,7 +54,7 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
             onClose();
         } catch (e) {
             console.error("Failed to save metadata", e);
-            alert("Failed to save changes: " + e);
+            showAlert("Failed to save changes: " + e, "Error");
         }
         setIsSaving(false);
     }

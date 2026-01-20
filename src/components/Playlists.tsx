@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Playlist, Song } from '../types';
 import { AlbumArt } from './AlbumArt';
+import { useModal } from '../hooks/useModal';
+
 
 interface PlaylistsProps {
     songs: Song[];
@@ -13,9 +15,24 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
     const [newPlaylistName, setNewPlaylistName] = useState("");
     const [creating, setCreating] = useState(false);
     const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
+    const { showAlert } = useModal();
+
 
     useEffect(() => {
         loadPlaylists();
+
+        const handleDelete = async (e: any) => {
+            const playlistName = e.detail;
+            try {
+                await invoke("delete_playlist", { playlistName });
+                loadPlaylists();
+            } catch (err) {
+                showAlert("Failed to delete: " + err, "Error");
+            }
+        };
+
+        window.addEventListener('delete-playlist', handleDelete);
+        return () => window.removeEventListener('delete-playlist', handleDelete);
     }, []);
 
     async function loadPlaylists() {
@@ -37,7 +54,7 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
             setNewPlaylistName("");
             loadPlaylists();
         } catch (e) {
-            alert("Failed to create: " + e);
+            showAlert("Failed to create: " + e, "Error");
         }
         setCreating(false);
     }
@@ -247,6 +264,7 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
 import { useMemo } from 'react';
 
 function PlaylistCard({ playlist, songs, onSelect }: { playlist: Playlist, songs: Song[], onSelect: () => void }) {
+    const { showConfirm } = useModal();
     const collage = useMemo(() => {
         const plSongs = playlist.tracks
             .map(t => songs.find(s => s.path === t))
@@ -261,25 +279,49 @@ function PlaylistCard({ playlist, songs, onSelect }: { playlist: Playlist, songs
             onClick={onSelect}
             className="group bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-3 hover:bg-white/10 transition-all cursor-pointer flex flex-col hover:shadow-2xl hover:shadow-black/50 hover:border-white/20 hover:-translate-y-1"
         >
-            <div className="w-full aspect-square bg-neutral-900 rounded-lg mb-3 overflow-hidden grid grid-cols-2 grid-rows-2 relative shadow-inner">
-                {collage.length >= 4 ? (
-                    collage.map((s, i) => (
-                        <div key={i} className="overflow-hidden">
-                            <AlbumArt song={s} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+            <div className="flex justify-between items-start mb-3 overflow-hidden rounded-lg relative shadow-inner group-hover:shadow-none transition-all">
+                <div className="w-full aspect-square bg-neutral-900 grid grid-cols-2 grid-rows-2 relative">
+                    {collage.length >= 4 ? (
+                        collage.map((s, i) => (
+                            <div key={i} className="overflow-hidden">
+                                <AlbumArt song={s} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                            </div>
+                        ))
+                    ) : collage.length > 0 ? (
+                        <div className="col-span-2 row-span-2 overflow-hidden">
+                            <AlbumArt song={collage[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                         </div>
-                    ))
-                ) : collage.length > 0 ? (
-                    <div className="col-span-2 row-span-2 overflow-hidden">
-                        <AlbumArt song={collage[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    </div>
-                ) : (
-                    <div className="col-span-2 row-span-2 flex items-center justify-center text-4xl text-white/20">
-                        🎵
-                    </div>
-                )}
+                    ) : (
+                        <div className="col-span-2 row-span-2 flex items-center justify-center text-4xl text-white/20">
+                            🎵
+                        </div>
+                    )}
+                </div>
             </div>
-            <h3 className="font-medium text-white/90 truncate text-sm px-1">{playlist.name}</h3>
-            <p className="text-[10px] text-white/40 font-mono px-1">{playlist.tracks.length} tracks</p>
+
+            <div className="flex justify-between items-center">
+                <div className="flex-1 min-w-0 pr-2">
+                    <h3 className="font-medium text-white/90 truncate text-sm px-1">{playlist.name}</h3>
+                    <p className="text-[10px] text-white/40 font-mono px-1">{playlist.tracks.length} tracks</p>
+                </div>
+                <button
+                    onClick={async (e) => {
+                        e.stopPropagation();
+                        // Confirm?
+                        if (await showConfirm(`Are you sure you want to delete playlist "${playlist.name}"?`, "Delete Playlist")) {
+                            // We need to pass delete handler down
+                            const customEvent = new CustomEvent('delete-playlist', { detail: playlist.name });
+                            window.dispatchEvent(customEvent);
+                        }
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded transition-all"
+                    title="Delete Playlist"
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
+                    </svg>
+                </button>
+            </div>
         </div>
     );
 }

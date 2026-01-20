@@ -122,3 +122,17 @@ pub fn remove_from_playlist(playlist_name: String, song_path: String) -> Result<
 
     Ok(playlist)
 }
+
+#[tauri::command]
+pub fn delete_playlist(playlist_name: String) -> Result<(), String> {
+    let dir = get_playlist_dir();
+    let safe_name = playlist_name.replace(|c: char| !c.is_alphanumeric() && c != ' ' && c != '-', "");
+    let path = dir.join(format!("{}.json", safe_name));
+
+    if !path.exists() {
+        return Err("Playlist not found".into());
+    }
+
+    fs::remove_file(path).map_err(|e| e.to_string())?;
+    Ok(())
+}

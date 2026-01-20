@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Playlist, UsePlaylistsProps, UsePlaylistsReturn } from "../models";
+import { useModal } from "./useModal";
 
 export function usePlaylists({ currentSong }: UsePlaylistsProps): UsePlaylistsReturn {
+    const { showAlert } = useModal();
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
     const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
 
@@ -62,7 +64,19 @@ export function usePlaylists({ currentSong }: UsePlaylistsProps): UsePlaylistsRe
                 setMenuOpenFor(null);
             }
         } catch (e) {
-            alert("Failed to update playlist: " + e);
+            showAlert("Failed to update playlist: " + e, "Error");
+        }
+    }
+
+    async function deletePlaylist(playlistName: string) {
+        try {
+            await invoke("delete_playlist", { playlistName });
+            await loadPlaylists();
+            if (menuOpenFor) {
+                setMenuOpenFor(null);
+            }
+        } catch (e) {
+            showAlert("Failed to delete playlist: " + e, "Error");
         }
     }
 
@@ -76,6 +90,7 @@ export function usePlaylists({ currentSong }: UsePlaylistsProps): UsePlaylistsRe
         playlists,
         loadPlaylists,
         addToPlaylist,
+        deletePlaylist,
         isFavorite,
         handleToggleFavorite,
         menuOpenFor,
