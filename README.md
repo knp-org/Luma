@@ -2,7 +2,7 @@
 
 ![Luma App Screenshot](assets/app-screenshot.png)
 
-Luma is a modern, sleek music player designed for a premium audio experience. Built with the power of **Tauri**, **React**, and **TypeScript**, it combines high performance with a stunning "Cyber-Industrial" aesthetic.
+Luma is a modern, sleek music player designed for a premium audio experience. Built with the power of **Tauri**, **React**, and **TypeScript**.
 
 ## Features
 
@@ -10,7 +10,6 @@ Luma is a modern, sleek music player designed for a premium audio experience. Bu
 -   **Library Management**: Easily organize and browse your music by Genres, Albums, and Artists.
 -   **Playlists**: Create, manage, and customize your own playlists.
 -   **Favorites**: Quickly access your most-loved tracks.
--   **Analytics**: Gain insights into your listening habits (Coming Soon).
 -   **Customizable Settings**: Tailor the experience to your preferences.
 
 ## Prerequisites
