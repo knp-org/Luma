@@ -71,7 +71,7 @@ TMP_FILE="$TMP_DIR/$FILENAME"
 log_info "Found latest package: ${BOLD}$FILENAME${NC}"
 
 log_info "Downloading $FILENAME from GitHub..."
-curl -L --progress-bar "$DOWNLOAD_URL" -o "$TMP_FILE"
+curl -sL "$DOWNLOAD_URL" -o "$TMP_FILE"
 
 # Perform installation based on package type
 if [ "$PKG_TYPE" = "deb" ]; then
