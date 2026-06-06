@@ -44,7 +44,8 @@ pub fn run() {
             lyrics::fetch_lyrics_online,
             analytics::increment_play_count,
             analytics::get_play_stats,
-            commands::update_song_metadata
+            commands::update_song_metadata,
+            commands::get_playback_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

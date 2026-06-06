@@ -330,6 +330,11 @@ pub fn set_player_volume(state: State<'_, AudioPlayer>, volume: f32) -> Result<(
 }
 
 #[tauri::command]
+pub fn get_playback_status(state: State<'_, AudioPlayer>) -> Result<crate::player::PlaybackStatus, String> {
+    Ok(state.get_status())
+}
+
+#[tauri::command]
 pub fn update_song_metadata(
     path: String,
     title: String,

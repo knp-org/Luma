@@ -12,6 +12,7 @@ export function usePlayer({ songs, seekInterval }: UsePlayerProps): UsePlayerRet
     const [volume, setVolume] = useState(0.5);
     const progressIntervalRef = useRef<number | null>(null);
     const trackLoadedRef = useRef<boolean>(false);
+    const trackTransitioningRef = useRef<boolean>(false);
     
     const nextTrackRef = useRef(nextTrack);
     useEffect(() => {
@@ -20,20 +21,27 @@ export function usePlayer({ songs, seekInterval }: UsePlayerProps): UsePlayerRet
 
     const currentSong = queue[currentIndex] || null;
 
-    // Progress bar timer
+    // Progress bar timer - syncs with actual backend playback position
     useEffect(() => {
         if (isPlaying && currentSong) {
-            progressIntervalRef.current = window.setInterval(() => {
-                setCurrentTime(prev => {
-                    if (prev >= currentSong.duration_seconds) {
-                        setTimeout(() => {
-                            nextTrackRef.current(true);
-                        }, 0);
-                        return 0;
+            progressIntervalRef.current = window.setInterval(async () => {
+                try {
+                    const status = await invoke<{ position_secs: number; finished: boolean }>("get_playback_status");
+                    
+                    if (status.finished && !trackTransitioningRef.current) {
+                        // Track actually finished in the backend — advance to next
+                        trackTransitioningRef.current = true;
+                        setCurrentTime(0);
+                        nextTrackRef.current(true);
+                        return;
                     }
-                    return prev + 1;
-                });
-            }, 1000);
+                    
+                    // Sync displayed time with actual audio position
+                    setCurrentTime(Math.floor(status.position_secs));
+                } catch (e) {
+                    console.error("Failed to get playback status:", e);
+                }
+            }, 500);
         } else {
             if (progressIntervalRef.current) {
                 clearInterval(progressIntervalRef.current);
@@ -52,6 +60,7 @@ export function usePlayer({ songs, seekInterval }: UsePlayerProps): UsePlayerRet
             setCurrentTime(0);
             setIsPlaying(true);
             trackLoadedRef.current = true;
+            trackTransitioningRef.current = false;
             await invoke("increment_play_count", { path: trackPath });
         } catch (e) {
             console.error("Failed to play", e);
@@ -125,6 +134,7 @@ export function usePlayer({ songs, seekInterval }: UsePlayerProps): UsePlayerRet
                     setCurrentIndex(0);
                     setCurrentTime(0);
                     trackLoadedRef.current = false;
+                    trackTransitioningRef.current = false;
                     return;
                 }
                 nextIndex = 0;
