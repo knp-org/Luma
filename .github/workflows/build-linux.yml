@@ -1,10 +1,9 @@
 name: Build Linux Package
 
 on:
-  push:
-    branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build-linux:
