@@ -31,6 +31,15 @@ Before setting up the project, ensure you have the following installed:
 
 ## Installation
 
+### Quick Install (Recommended for Users)
+To automatically download and install the latest release directly from GitHub on any Linux distribution, run the following command in your terminal:
+
+```bash
+curl -sL https://raw.githubusercontent.com/knp-org/Luma/main/install_release.sh | bash
+```
+
+### Build from Source (For Developers)
+
 1.  Clone the repository.
 2.  Navigate to the project directory.
 3.  Install the dependencies:

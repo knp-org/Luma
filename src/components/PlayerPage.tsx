@@ -33,6 +33,8 @@ interface PlayerPageProps {
     } | null;
     onSetSleepTimer: (minutes: number, action: 'stop' | 'quit') => void;
     onCancelSleepTimer: () => void;
+    volume: number;
+    onVolumeChange: (volume: number) => void;
 }
 
 export function PlayerPage({
@@ -58,8 +60,21 @@ export function PlayerPage({
     sleepTimer,
     onSetSleepTimer,
     onCancelSleepTimer,
+    volume,
+    onVolumeChange,
 }: PlayerPageProps) {
     const artSrc = useSongArt(currentSong);
+
+    const [prevVolume, setPrevVolume] = useState(0.5);
+
+    const handleMuteToggle = () => {
+        if (volume > 0) {
+            setPrevVolume(volume);
+            onVolumeChange(0);
+        } else {
+            onVolumeChange(prevVolume > 0 ? prevVolume : 0.5);
+        }
+    };
 
     // Panel visibility (hidden by default)
     const [showQueue, setShowQueue] = useState(false);
@@ -130,7 +145,7 @@ export function PlayerPage({
     }
 
     return (
-        <div className="fixed top-10 inset-x-0 bottom-0 z-[200] bg-neutral-950 flex flex-col animate-fade-in overflow-hidden">
+        <div className="fixed inset-0 z-[2000] bg-neutral-950 flex flex-col animate-fade-in overflow-hidden">
             {/* Background */}
             {artSrc && (
                 <div
@@ -141,14 +156,15 @@ export function PlayerPage({
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90"></div>
 
             {/* Header */}
-            <div className="relative z-50 flex items-center justify-between p-6">
-                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+            <div className="relative z-50 flex items-center justify-between p-6 pt-12">
+                <div data-tauri-drag-region className="absolute inset-0 z-0"></div>
+                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors relative z-10">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
                     </svg>
                 </button>
-                <div className="text-sm text-white/50 font-medium">Now Playing</div>
-                <div className="relative">
+                <div className="text-sm text-white/50 font-medium relative z-10 pointer-events-none">Now Playing</div>
+                <div className="relative z-10">
                     <button
                         onClick={() => setShowSleepMenu(!showSleepMenu)}
                         className={`p-2 hover:bg-white/10 rounded-full transition-colors relative ${sleepTimer?.active || showSleepMenu ? 'text-white' : 'text-white/40'}`}
@@ -250,41 +266,72 @@ export function PlayerPage({
                             <span>{Math.floor(currentSong.duration_seconds / 60)}:{String(Math.floor(currentSong.duration_seconds) % 60).padStart(2, '0')}</span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-8">
-                        <button onClick={onToggleShuffle} className={`p-3 transition-colors ${isShuffle ? 'text-white' : 'text-white/40 hover:text-white'}`}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>
-                        </button>
-
-                        <div className="flex items-center gap-4">
-                            <button onClick={onSeekBackward} className="p-2 text-white/40 hover:text-white transition-colors" title="Seek Backward 10s">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z" />
-                                </svg>
-                            </button>
-                            <button onClick={onPrevTrack} className="p-3 text-white/60 hover:text-white transition-colors">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z" /></svg>
+                    <div className="flex items-center justify-center w-full mt-2 mb-4">
+                        {/* Left Controls */}
+                        <div className="flex-1 flex justify-end pr-4 md:pr-8">
+                            <button onClick={onToggleShuffle} className={`p-3 transition-colors ${isShuffle ? 'text-white' : 'text-white/40 hover:text-white'}`}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>
                             </button>
                         </div>
 
-                        <button onClick={onTogglePlay} className="w-20 h-20 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-white/20">
-                            {isPlaying ? <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg> : <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7L8 5z" /></svg>}
-                        </button>
+                        {/* Center Controls */}
+                        <div className="flex items-center gap-4 md:gap-8">
+                            <div className="flex items-center gap-2 md:gap-4">
+                                <button onClick={onSeekBackward} className="p-2 text-white/40 hover:text-white transition-colors" title="Seek Backward 10s">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z" />
+                                    </svg>
+                                </button>
+                                <button onClick={onPrevTrack} className="p-3 text-white/60 hover:text-white transition-colors">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z" /></svg>
+                                </button>
+                            </div>
 
-                        <div className="flex items-center gap-4">
-                            <button onClick={onNextTrack} className="p-3 text-white/60 hover:text-white transition-colors">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
+                            <button onClick={onTogglePlay} className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-white/20 flex-shrink-0">
+                                {isPlaying ? <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg> : <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7L8 5z" /></svg>}
                             </button>
-                            <button onClick={onSeekForward} className="p-2 text-white/40 hover:text-white transition-colors" title="Seek Forward 10s">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" />
-                                </svg>
-                            </button>
+
+                            <div className="flex items-center gap-2 md:gap-4">
+                                <button onClick={onNextTrack} className="p-3 text-white/60 hover:text-white transition-colors">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
+                                </button>
+                                <button onClick={onSeekForward} className="p-2 text-white/40 hover:text-white transition-colors" title="Seek Forward 10s">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
-                        <button onClick={onToggleLoop} className={`p-3 transition-colors relative ${loopMode !== 'off' ? 'text-white' : 'text-white/40 hover:text-white'}`}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" /></svg>
-                            {loopMode === 'one' && <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold bg-black/50 rounded-full w-4 h-4 flex items-center justify-center border border-white/20">1</span>}
-                        </button>
+                        {/* Right Controls */}
+                        <div className="flex-1 flex justify-start items-center gap-2 md:gap-4 pl-4 md:pl-8">
+                            <button onClick={onToggleLoop} className={`p-3 transition-colors relative ${loopMode !== 'off' ? 'text-white' : 'text-white/40 hover:text-white'}`}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" /></svg>
+                                {loopMode === 'one' && <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold bg-black/50 rounded-full w-4 h-4 flex items-center justify-center border border-white/20">1</span>}
+                            </button>
+                            
+                            <div className="hidden sm:flex items-center gap-2 group/volume" onWheel={(e) => {
+                                const delta = e.deltaY > 0 ? -0.05 : 0.05;
+                                onVolumeChange(Math.min(Math.max(volume + delta, 0), 1));
+                            }}>
+                                <button onClick={handleMuteToggle} className="text-white/40 hover:text-white transition-colors">
+                                    {volume === 0 ? (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z" /></svg>
+                                    ) : volume < 0.5 ? (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" /></svg>
+                                    ) : (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
+                                    )}
+                                </button>
+                                <div className="w-16 md:w-24 h-1 bg-white/10 rounded-full group hover:h-2 transition-all duration-200 cursor-pointer relative" onClick={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const percent = (e.clientX - rect.left) / rect.width;
+                                    onVolumeChange(Math.min(Math.max(percent, 0), 1));
+                                }}>
+                                    <div className="h-full bg-white/50 rounded-full hover:bg-white/80 transition-colors absolute left-0 top-0" style={{ width: `${volume * 100}%` }}></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Panel Toggle Buttons */}
@@ -406,7 +453,7 @@ export function PlayerPage({
             </div>
 
             {/* Footer Info */}
-            <div className="relative z-10 p-6 flex justify-center">
+            <div className="relative z-10 p-6 flex justify-center w-full">
                 <div className="flex items-center gap-4 text-sm text-white/30">
                     {currentSong.bitrate && <span>{currentSong.bitrate} kbps</span>}
                     {currentSong.sample_rate && <span>{currentSong.sample_rate} Hz</span>}

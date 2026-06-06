@@ -226,6 +226,8 @@ function App() {
             });
           }}
           onCancelSleepTimer={() => setSleepTimer(null)}
+          volume={volume}
+          onVolumeChange={handleVolumeChange}
         />
       )}
 

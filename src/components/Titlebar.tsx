@@ -31,7 +31,7 @@ export function Titlebar() {
     };
 
     return (
-        <div className="h-[36px] flex flex-shrink-0 items-stretch bg-black/40 backdrop-blur-md border-b border-white/5 select-none z-[1000] w-full">
+        <div className="relative h-[36px] flex flex-shrink-0 items-stretch bg-transparent border-b border-white/5 select-none z-[3000] w-full">
             {/* Drag Region */}
             <div 
                 data-tauri-drag-region 
