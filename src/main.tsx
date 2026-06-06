@@ -5,6 +5,11 @@ import App from "./App";
 
 import { ModalProvider } from "./providers/ModalProvider";
 
+// Disable default right-click context menu
+document.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+});
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ModalProvider>

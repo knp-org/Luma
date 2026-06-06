@@ -130,7 +130,7 @@ export function PlayerPage({
     }
 
     return (
-        <div className="fixed inset-0 z-[200] bg-neutral-950 flex flex-col animate-fade-in overflow-hidden">
+        <div className="fixed top-10 inset-x-0 bottom-0 z-[200] bg-neutral-950 flex flex-col animate-fade-in overflow-hidden">
             {/* Background */}
             {artSrc && (
                 <div
@@ -141,7 +141,7 @@ export function PlayerPage({
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90"></div>
 
             {/* Header */}
-            <div className="relative z-10 flex items-center justify-between p-6">
+            <div className="relative z-50 flex items-center justify-between p-6">
                 <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />

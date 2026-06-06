@@ -14,6 +14,9 @@ interface LibraryProps {
     onAddToPlaylist: (playlistName: string, songPath: string, keepOpen?: boolean) => void;
     onShowSongInfo: (song: Song) => void;
     onGoToSettings: () => void;
+    title?: string;
+    emptyMessage?: string;
+    showSyncButton?: boolean;
 }
 
 export function Library({
@@ -28,6 +31,9 @@ export function Library({
     onAddToPlaylist,
     onShowSongInfo,
     onGoToSettings,
+    title = "Your Library",
+    emptyMessage = "No songs in your library",
+    showSyncButton = true,
 }: LibraryProps) {
     const [visibleCount, setVisibleCount] = useState(50);
     const [searchQuery, setSearchQuery] = useState('');
@@ -56,7 +62,7 @@ export function Library({
             <div className="p-6 border-b border-white/5">
                 <div className="flex items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">Your Library</h1>
+                        <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">{title}</h1>
                         <p className="text-white/30 text-sm mt-1 font-light">{songs.length} songs</p>
                     </div>
                     <div className="relative flex-1 max-w-md">
@@ -95,13 +101,15 @@ export function Library({
                     </div>
                 ) : songs.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-white/40 gap-4">
-                        <p className="font-light">No songs in your library</p>
-                        <button
-                            onClick={onGoToSettings}
-                            className="px-4 py-2 bg-white text-black hover:bg-neutral-200 rounded-lg text-sm transition-colors font-medium"
-                        >
-                            Go to settings to sync
-                        </button>
+                        <p className="font-light">{emptyMessage}</p>
+                        {showSyncButton && (
+                            <button
+                                onClick={onGoToSettings}
+                                className="px-4 py-2 bg-white text-black hover:bg-neutral-200 rounded-lg text-sm transition-colors font-medium"
+                            >
+                                Go to settings to sync
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-1 pb-32">

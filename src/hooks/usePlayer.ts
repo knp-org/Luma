@@ -12,6 +12,11 @@ export function usePlayer({ songs, seekInterval }: UsePlayerProps): UsePlayerRet
     const [volume, setVolume] = useState(0.5);
     const progressIntervalRef = useRef<number | null>(null);
     const trackLoadedRef = useRef<boolean>(false);
+    
+    const nextTrackRef = useRef(nextTrack);
+    useEffect(() => {
+        nextTrackRef.current = nextTrack;
+    });
 
     const currentSong = queue[currentIndex] || null;
 
@@ -21,7 +26,9 @@ export function usePlayer({ songs, seekInterval }: UsePlayerProps): UsePlayerRet
             progressIntervalRef.current = window.setInterval(() => {
                 setCurrentTime(prev => {
                     if (prev >= currentSong.duration_seconds) {
-                        nextTrack(true);
+                        setTimeout(() => {
+                            nextTrackRef.current(true);
+                        }, 0);
                         return 0;
                     }
                     return prev + 1;
@@ -96,7 +103,7 @@ export function usePlayer({ songs, seekInterval }: UsePlayerProps): UsePlayerRet
         if (queue.length === 0) return;
 
         if (loopMode === "one" && auto) {
-            await seekTo(0);
+            await playTrackInternal(queue[currentIndex].path);
             return;
         }
 
@@ -117,6 +124,7 @@ export function usePlayer({ songs, seekInterval }: UsePlayerProps): UsePlayerRet
                     await invoke("stop_playback");
                     setCurrentIndex(0);
                     setCurrentTime(0);
+                    trackLoadedRef.current = false;
                     return;
                 }
                 nextIndex = 0;

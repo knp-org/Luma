@@ -134,7 +134,7 @@ export function SleepTimerMenu({
                     value={customMinutes}
                     onChange={(e) => setCustomMinutes(e.target.value)}
                     placeholder="Custom (min)"
-                    className="flex-1 bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white/30 placeholder:text-white/20"
+                    className="flex-1 min-w-0 bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white/30 placeholder:text-white/20"
                     onKeyDown={(e) => e.key === 'Enter' && handleCustomSet()}
                 />
                 <button

@@ -16,6 +16,7 @@ import {
   PlayerPage,
   SongInfoModal,
   Analytics,
+  Titlebar,
 } from "./components";
 
 type View = "library" | "albums" | "playlists" | "settings" | "genres" | "favorites" | "analytics";
@@ -184,6 +185,7 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-neutral-950 text-white font-sans overflow-hidden selection:bg-white/30">
+      <Titlebar />
 
       {/* Full-Screen Player Page */}
       {showPlayerPage && currentSong && (
@@ -281,6 +283,9 @@ function App() {
 
           {currentView === "favorites" && (
             <Library
+              title="Favorites"
+              emptyMessage="No favorite songs yet."
+              showSyncButton={false}
               songs={songs.filter(s => playlists.find(p => p.name === "Favorites")?.tracks.includes(s.path))}
               loading={loading}
               currentSong={currentSong}
