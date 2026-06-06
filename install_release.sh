@@ -70,15 +70,6 @@ TMP_FILE="$TMP_DIR/$FILENAME"
 
 log_info "Found latest package: ${BOLD}$FILENAME${NC}"
 
-# Confirm installation
-read -p "Do you want to download and install this package? (y/N) " -n 1 -r < /dev/tty
-echo ""
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    log_info "Installation cancelled."
-    rm -rf "$TMP_DIR"
-    exit 0
-fi
-
 log_info "Downloading $FILENAME from GitHub..."
 curl -L --progress-bar "$DOWNLOAD_URL" -o "$TMP_FILE"
 
