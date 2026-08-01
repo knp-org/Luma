@@ -18,6 +18,7 @@ import {
   Analytics,
   Titlebar,
 } from "./components";
+import { GlassButton, GlassModal} from "@knp-org/liquid-glass-ui";
 
 type View = "library" | "albums" | "playlists" | "settings" | "genres" | "favorites" | "analytics";
 
@@ -369,28 +370,27 @@ function App() {
       )}
 
       {/* Exit Confirmation Modal */}
-      {showExitConfirm && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-neutral-900 border border-white/10 rounded-xl p-6 max-w-sm w-full shadow-2xl scale-100 animate-scale-up">
-            <h3 className="text-lg font-bold text-white mb-6">Exit Luma?</h3>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowExitConfirm(false)}
-                className="px-4 py-2 text-sm font-medium text-white/60 hover:text-white transition-colors"
-                autoFocus
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmExit}
-                className="px-4 py-2 text-sm font-medium bg-white text-black rounded-lg hover:bg-white/90 transition-colors"
-              >
-                Exit
-              </button>
-            </div>
+      <GlassModal
+        isOpen={showExitConfirm}
+        onClose={() => setShowExitConfirm(false)}
+        title="Exit Luma?"
+        surfaceOpacity={0.97}
+        className="!max-w-sm"
+        footer={
+          <div className="flex justify-end gap-3">
+            <GlassButton variant="secondary" onClick={() => setShowExitConfirm(false)} autoFocus>
+              Cancel
+            </GlassButton>
+            <GlassButton variant="danger" onClick={handleConfirmExit}>
+              Exit
+            </GlassButton>
           </div>
-        </div>
-      )}
+        }
+      >
+        <span className="text-sm text-white/70">
+          Playback will stop and your current queue is saved. Are you sure you want to exit?
+        </span>
+      </GlassModal>
     </div>
   );
 }

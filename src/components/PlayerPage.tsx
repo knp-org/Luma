@@ -2,8 +2,10 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Song, LoopMode } from '../types';
 import { AlbumArt, useSongArt } from './AlbumArt';
+import { GlassSlider, GlassButton, GlassHeading, GlassText, GlassTextarea, GlassAlert, GlassEmptyState, GlassBadge } from '@knp-org/liquid-glass-ui';
 import { parseLyrics, getCurrentLineIndex } from '../utils/lrcParser';
 import { SleepTimerMenu } from './SleepTimerMenu';
+import { IconFavorites, IconShuffle, IconSeekBackward, IconPrevTrack, IconPause, IconPlay, IconNextTrack, IconSeekForward, IconLoop, IconVolumeMute, IconVolumeLow, IconVolumeHigh, IconMusicNote, IconX, IconEdit, IconSpinner, IconDownload, IconArrowLeft, IconTimer, IconQueue } from '@knp-org/liquid-glass-ui';
 
 interface PlayerPageProps {
     currentSong: Song;
@@ -98,6 +100,20 @@ export function PlayerPage({
         }
     }, [toast]);
 
+    // Escape closes the topmost open panel, then the player itself
+    useEffect(() => {
+        function onKeyDown(e: KeyboardEvent) {
+            if (e.key !== 'Escape') return;
+            if (isEditing) { setIsEditing(false); return; }
+            if (showSleepMenu) { setShowSleepMenu(false); return; }
+            if (showLyrics) { setShowLyrics(false); return; }
+            if (showQueue) { setShowQueue(false); return; }
+            onClose();
+        }
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [isEditing, showSleepMenu, showLyrics, showQueue, onClose]);
+
     useEffect(() => {
         async function loadUserLyrics() {
             try {
@@ -123,12 +139,37 @@ export function PlayerPage({
         return getCurrentLineIndex(parsedLyrics.lines, currentTime);
     }, [parsedLyrics, currentTime]);
 
+    const prevSongs = useMemo(() => {
+        const list: { song: Song; index: number; offset: number }[] = [];
+        for (let i = 3; i >= 1; i--) {
+            const idx = currentIndex - i;
+            if (idx >= 0 && queue[idx]) {
+                list.push({ song: queue[idx], index: idx, offset: -i });
+            }
+        }
+        return list;
+    }, [queue, currentIndex]);
+
+    const nextSongs = useMemo(() => {
+        const list: { song: Song; index: number; offset: number }[] = [];
+        for (let i = 1; i <= 3; i++) {
+            const idx = currentIndex + i;
+            if (idx < queue.length && queue[idx]) {
+                list.push({ song: queue[idx], index: idx, offset: i });
+            }
+        }
+        return list;
+    }, [queue, currentIndex]);
+
     useEffect(() => {
         if (currentLineIndex < 0 || !lyricsContainerRef.current || isEditing) return;
         const container = lyricsContainerRef.current;
-        const activeElement = container.querySelector(`[data-line-index="${currentLineIndex}"]`);
+        const activeElement = container.querySelector<HTMLElement>(`[data-line-index="${currentLineIndex}"]`);
         if (activeElement) {
-            activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Scroll the lyrics container only — scrollIntoView also scrolls every
+            // scrollable ancestor, which yanked the whole player content upwards.
+            const top = activeElement.offsetTop - container.clientHeight / 2 + activeElement.offsetHeight / 2;
+            container.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
         }
     }, [currentLineIndex, isEditing]);
 
@@ -156,27 +197,24 @@ export function PlayerPage({
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90"></div>
 
             {/* Header */}
-            <div className="relative z-50 flex items-center justify-between p-6 pt-12">
+            {/* pr keeps the sleep timer clear of the native window controls (3 x 46px) */}
+            <div className="relative z-50 flex items-center justify-between p-6 pt-12 pr-[160px]">
                 <div data-tauri-drag-region className="absolute inset-0 z-0"></div>
-                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors relative z-10">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-                    </svg>
-                </button>
+                <GlassButton variant="ghost" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors relative z-10">
+                    <IconArrowLeft size={24} />
+                </GlassButton>
                 <div className="text-sm text-white/50 font-medium relative z-10 pointer-events-none">Now Playing</div>
                 <div className="relative z-10">
-                    <button
+                    <GlassButton variant="ghost"
                         onClick={() => setShowSleepMenu(!showSleepMenu)}
                         className={`p-2 hover:bg-white/10 rounded-full transition-colors relative ${sleepTimer?.active || showSleepMenu ? 'text-white' : 'text-white/40'}`}
                         title="Sleep Timer"
                     >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                        </svg>
+                        <IconTimer size={24} />
                         {sleepTimer?.active && (
                             <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_5px_rgba(59,130,246,0.8)]"></div>
                         )}
-                    </button>
+                    </GlassButton>
                     {showSleepMenu && (
                         <SleepTimerMenu
                             onClose={() => setShowSleepMenu(false)}
@@ -192,20 +230,18 @@ export function PlayerPage({
             </div>
 
             {/* Main Layout */}
-            <div className="flex-1 flex relative z-10 overflow-hidden">
-                {/* Queue Toggle / Panel */}
-                {showQueue && (
-                    <div className="w-80 border-r border-white/10 flex flex-col bg-black/20 backdrop-blur-sm">
-                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+            <div className="flex-1 flex relative z-10 overflow-hidden items-center justify-center">
+                {/* Queue Side Drawer (Left) */}
+                <div className={`absolute left-0 top-0 bottom-0 z-30 w-80 bg-black/40 backdrop-blur-2xl border-r border-white/10 shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${showQueue ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <div className="w-80 h-full flex flex-col">
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
                             <div>
-                                <h2 className="text-lg font-semibold text-white">Queue</h2>
-                                <p className="text-xs text-white/40">{queue.length} songs</p>
+                                <GlassHeading as="h2" className="text-lg font-semibold text-white">Queue</GlassHeading>
+                                <GlassText as="p" className="text-xs text-white/40">{queue.length} songs</GlassText>
                             </div>
-                            <button onClick={() => setShowQueue(false)} className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Hide queue">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M18 6L6 18M6 6l12 12" />
-                                </svg>
-                            </button>
+                            <GlassButton variant="ghost" onClick={() => setShowQueue(false)} className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Hide queue">
+                                <IconX size={16} />
+                            </GlassButton>
                         </div>
                         <div className="flex-1 overflow-y-auto scrollbar-hidden p-2">
                             {queue.map((song, idx) => (
@@ -234,32 +270,91 @@ export function PlayerPage({
                             ))}
                         </div>
                     </div>
-                )}
+                </div>
 
-                {/* Player Content */}
-                <div className="flex-1 flex flex-col items-center justify-center px-8 relative">
-                    <div className="w-72 h-72 md:w-80 md:h-80 lg:w-96 lg:h-96 mb-8 rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/10 flex items-center justify-center bg-black/40">
-                        <AlbumArt song={currentSong} className="w-full h-full" placeholderContent={<div className="text-8xl">💿</div>} useOriginal={true} objectFit="contain" />
+                {/* Player Content (Fixed Center — never shifts when drawers open) */}
+                <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl flex flex-col items-center justify-center px-4 sm:px-8 z-10 overflow-y-auto overflow-x-hidden scrollbar-hidden py-4">
+                    {/* Album Art Stack Carousel (Prev 3, Active, Next 3) */}
+                    <div className="relative w-full flex items-center justify-center mb-4 sm:mb-6 h-52 sm:h-64 md:h-72 lg:h-80 select-none overflow-visible">
+                        {/* Previous 3 Songs Stacked (Left) */}
+                        {prevSongs.map(({ song, index, offset }) => {
+                            const absOffset = Math.abs(offset);
+                            const translateX = offset * 42;
+                            const scale = 1 - absOffset * 0.12;
+                            const blur = absOffset === 3 ? 'blur-md' : absOffset === 2 ? 'blur-sm' : 'blur-[2px]';
+                            const opacity = absOffset === 3 ? 'opacity-30' : absOffset === 2 ? 'opacity-50' : 'opacity-75';
+                            const zIndex = 10 - absOffset;
+
+                            return (
+                                <div
+                                    key={`prev-${index}`}
+                                    onClick={() => onPlayIndex(index)}
+                                    style={{
+                                        transform: `translateX(${translateX}%) scale(${scale})`,
+                                        zIndex: zIndex,
+                                    }}
+                                    className={`absolute w-48 h-48 sm:w-60 sm:h-60 md:w-72 md:h-72 lg:w-80 lg:h-80 rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-xl cursor-pointer transform-gpu will-change-transform transition-all duration-500 ease-out hover:opacity-100 hover:scale-105 hover:blur-none ${blur} ${opacity}`}
+                                    title={`Previous: ${song.title || 'Track'}`}
+                                >
+                                    <AlbumArt song={song} className="w-full h-full object-cover" />
+                                </div>
+                            );
+                        })}
+
+                        {/* Current Active Song (Center) */}
+                        <div className="relative z-20 w-48 h-48 sm:w-60 sm:h-60 md:w-72 md:h-72 lg:w-80 lg:h-80 rounded-2xl overflow-hidden shadow-2xl shadow-black/80 border border-white/20 flex items-center justify-center bg-black/60 transform-gpu will-change-transform transition-transform duration-500 ease-out hover:scale-105">
+                            <AlbumArt song={currentSong} className="w-full h-full" placeholderContent={<div className="text-8xl">💿</div>} useOriginal={true} objectFit="contain" smooth={true} />
+                        </div>
+
+                        {/* Next 3 Songs Stacked (Right) */}
+                        {nextSongs.map(({ song, index, offset }) => {
+                            const absOffset = Math.abs(offset);
+                            const translateX = offset * 42;
+                            const scale = 1 - absOffset * 0.12;
+                            const blur = absOffset === 3 ? 'blur-md' : absOffset === 2 ? 'blur-sm' : 'blur-[2px]';
+                            const opacity = absOffset === 3 ? 'opacity-30' : absOffset === 2 ? 'opacity-50' : 'opacity-75';
+                            const zIndex = 10 - absOffset;
+
+                            return (
+                                <div
+                                    key={`next-${index}`}
+                                    onClick={() => onPlayIndex(index)}
+                                    style={{
+                                        transform: `translateX(${translateX}%) scale(${scale})`,
+                                        zIndex: zIndex,
+                                    }}
+                                    className={`absolute w-48 h-48 sm:w-60 sm:h-60 md:w-72 md:h-72 lg:w-80 lg:h-80 rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-xl cursor-pointer transform-gpu will-change-transform transition-all duration-500 ease-out hover:opacity-100 hover:scale-105 hover:blur-none ${blur} ${opacity}`}
+                                    title={`Next: ${song.title || 'Track'}`}
+                                >
+                                    <AlbumArt song={song} className="w-full h-full object-cover" />
+                                </div>
+                            );
+                        })}
                     </div>
-                    <div className="text-center mb-8 max-w-md w-full px-4">
-                        <div className="flex items-center justify-center gap-4 mb-2">
-                            <h1 className="text-2xl md:text-3xl font-bold text-white truncate max-w-[80%]">{currentSong.title || "Unknown Title"}</h1>
-                            <button
+                    <div className="text-center mb-4 sm:mb-6 max-w-md w-full px-4">
+                        <div className="flex items-center justify-center gap-4 mb-1">
+                            <GlassHeading as="h1" className="text-xl sm:text-2xl md:text-3xl font-bold text-white truncate max-w-[80%]">{currentSong.title || "Unknown Title"}</GlassHeading>
+                            <GlassButton variant="ghost"
                                 onClick={onToggleFavorite}
                                 className={`p-2 transition-colors ${isFavorite ? 'text-red-500' : 'text-white/20 hover:text-white'}`}
                                 title={isFavorite ? "Remove from favorites" : "Add to favorites"}
                             >
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill={isFavorite ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isFavorite ? "0" : "2"}>
-                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                                </svg>
-                            </button>
+                                <IconFavorites size={24} fill={isFavorite ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isFavorite ? "0" : "2"} />
+                            </GlassButton>
                         </div>
-                        <p className="text-lg text-white/60 truncate">{currentSong.artist || "Unknown Artist"}</p>
-                        <p className="text-sm text-white/40 truncate mt-1">{currentSong.album || "Unknown Album"}</p>
+                        <GlassText as="p" className="text-base sm:text-lg text-white/60 truncate">{currentSong.artist || "Unknown Artist"}</GlassText>
+                        <GlassText as="p" className="text-xs sm:text-sm text-white/40 truncate mt-1">{currentSong.album || "Unknown Album"}</GlassText>
                     </div>
                     <div className="w-full max-w-md mb-6">
-                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden cursor-pointer relative group" onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); onSeek(((e.clientX - rect.left) / rect.width) * currentSong.duration_seconds); }}>
-                            <div className="h-full bg-white rounded-full transition-all duration-300" style={{ width: `${(currentTime / currentSong.duration_seconds) * 100}%` }}></div>
+                        <div className="px-2">
+                            <GlassSlider
+                                min={0}
+                                max={currentSong.duration_seconds || 100}
+                                value={currentTime}
+                                shimmer={true}
+                                onChange={(e) => onSeek(Number(e.target.value))}
+                                className="w-full"
+                            />
                         </div>
                         <div className="flex justify-between mt-2 text-xs text-white/40 font-mono">
                             <span>{Math.floor(currentTime / 60)}:{String(Math.floor(currentTime) % 60).padStart(2, '0')}</span>
@@ -269,66 +364,79 @@ export function PlayerPage({
                     <div className="flex items-center justify-center w-full mt-2 mb-4">
                         {/* Left Controls */}
                         <div className="flex-1 flex justify-end pr-4 md:pr-8">
-                            <button onClick={onToggleShuffle} className={`p-3 transition-colors ${isShuffle ? 'text-white' : 'text-white/40 hover:text-white'}`}>
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" /></svg>
-                            </button>
+                            <GlassButton
+                                variant="ghost"
+                                onClick={onToggleShuffle}
+                                className={`!p-3 !rounded-full transition-all ${isShuffle ? '!text-white !bg-white/15 shadow-md' : '!text-white/30 opacity-50 hover:opacity-80'}`}
+                                title={isShuffle ? "Shuffle On" : "Shuffle Off"}
+                            >
+                                <IconShuffle variant={isShuffle ? 'on' : 'off'} size={24} />
+                            </GlassButton>
                         </div>
 
                         {/* Center Controls */}
                         <div className="flex items-center gap-4 md:gap-8">
                             <div className="flex items-center gap-2 md:gap-4">
-                                <button onClick={onSeekBackward} className="p-2 text-white/40 hover:text-white transition-colors" title="Seek Backward 10s">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z" />
-                                    </svg>
-                                </button>
-                                <button onClick={onPrevTrack} className="p-3 text-white/60 hover:text-white transition-colors">
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z" /></svg>
-                                </button>
+                                <GlassButton variant="ghost" onClick={onSeekBackward} className="p-2 text-white/40 hover:text-white transition-colors" title="Seek Backward 10s">
+                                    <IconSeekBackward size={24} />
+                                </GlassButton>
+                                <GlassButton variant="ghost" onClick={onPrevTrack} className="p-3 text-white/60 hover:text-white transition-colors">
+                                    <IconPrevTrack size={32} />
+                                </GlassButton>
                             </div>
 
-                            <button onClick={onTogglePlay} className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-white/20 flex-shrink-0">
-                                {isPlaying ? <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg> : <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7L8 5z" /></svg>}
-                            </button>
+                            <GlassButton 
+                                variant="primary" 
+                                shape="circle" 
+                                onClick={onTogglePlay} 
+                                className="!w-16 !h-16 md:!w-20 md:!h-20 hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-white/20 flex-shrink-0"
+                            >
+                                {isPlaying ? <IconPause size={32} /> : <IconPlay size={32} />}
+                            </GlassButton>
 
                             <div className="flex items-center gap-2 md:gap-4">
-                                <button onClick={onNextTrack} className="p-3 text-white/60 hover:text-white transition-colors">
-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
-                                </button>
-                                <button onClick={onSeekForward} className="p-2 text-white/40 hover:text-white transition-colors" title="Seek Forward 10s">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" />
-                                    </svg>
-                                </button>
+                                <GlassButton variant="ghost" onClick={onNextTrack} className="p-3 text-white/60 hover:text-white transition-colors">
+                                    <IconNextTrack size={32} />
+                                </GlassButton>
+                                <GlassButton variant="ghost" onClick={onSeekForward} className="p-2 text-white/40 hover:text-white transition-colors" title="Seek Forward 10s">
+                                    <IconSeekForward size={24} />
+                                </GlassButton>
                             </div>
                         </div>
 
                         {/* Right Controls */}
                         <div className="flex-1 flex justify-start items-center gap-2 md:gap-4 pl-4 md:pl-8">
-                            <button onClick={onToggleLoop} className={`p-3 transition-colors relative ${loopMode !== 'off' ? 'text-white' : 'text-white/40 hover:text-white'}`}>
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" /></svg>
-                                {loopMode === 'one' && <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold bg-black/50 rounded-full w-4 h-4 flex items-center justify-center border border-white/20">1</span>}
-                            </button>
+                            <GlassButton
+                                variant="ghost"
+                                onClick={onToggleLoop}
+                                className={`!p-3 !rounded-full transition-all relative ${loopMode !== 'off' ? '!text-white !bg-white/15 shadow-md' : '!text-white/30 opacity-50 hover:opacity-80'}`}
+                                title={loopMode === 'off' ? "Repeat Off" : loopMode === 'all' ? "Repeat All" : "Repeat Current Track"}
+                            >
+                                <IconLoop variant={loopMode} size={24} />
+                            </GlassButton>
                             
                             <div className="hidden sm:flex items-center gap-2 group/volume" onWheel={(e) => {
                                 const delta = e.deltaY > 0 ? -0.05 : 0.05;
                                 onVolumeChange(Math.min(Math.max(volume + delta, 0), 1));
                             }}>
-                                <button onClick={handleMuteToggle} className="text-white/40 hover:text-white transition-colors">
+                                <GlassButton variant="ghost" onClick={handleMuteToggle} className="text-white/40 hover:text-white transition-colors">
                                     {volume === 0 ? (
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z" /></svg>
+                                        <IconVolumeMute size={20} />
                                     ) : volume < 0.5 ? (
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" /></svg>
+                                        <IconVolumeLow size={20} />
                                     ) : (
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
+                                        <IconVolumeHigh size={20} />
                                     )}
-                                </button>
-                                <div className="w-16 md:w-24 h-1 bg-white/10 rounded-full group hover:h-2 transition-all duration-200 cursor-pointer relative" onClick={(e) => {
-                                    const rect = e.currentTarget.getBoundingClientRect();
-                                    const percent = (e.clientX - rect.left) / rect.width;
-                                    onVolumeChange(Math.min(Math.max(percent, 0), 1));
-                                }}>
-                                    <div className="h-full bg-white/50 rounded-full hover:bg-white/80 transition-colors absolute left-0 top-0" style={{ width: `${volume * 100}%` }}></div>
+                                </GlassButton>
+                                <div className="w-16 md:w-24 px-1">
+                                    <GlassSlider
+                                        min={0}
+                                        max={1}
+                                        step={0.01}
+                                        value={volume}
+                                        onChange={(e) => onVolumeChange(Number(e.target.value))}
+                                        className="w-full"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -336,53 +444,55 @@ export function PlayerPage({
 
                     {/* Panel Toggle Buttons */}
                     <div className="flex items-center gap-3 mt-6">
-                        <button
+                        <GlassButton variant="ghost"
                             onClick={() => setShowQueue(!showQueue)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${showQueue ? 'bg-white/20 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'}`}
                             title="Toggle queue"
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z" />
-                            </svg>
+                            <IconQueue size={16} />
                             <span className="text-xs font-medium">Queue</span>
-                        </button>
-                        <button
+                        </GlassButton>
+                        <GlassButton variant="ghost"
                             onClick={() => setShowLyrics(!showLyrics)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${showLyrics ? 'bg-white/20 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'}`}
                             title="Toggle lyrics"
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                            </svg>
+                            <IconMusicNote size={16} />
                             <span className="text-xs font-medium">Lyrics</span>
-                        </button>
+                        </GlassButton>
                     </div>
                 </div>
 
-                {/* Lyrics Toggle / Panel */}
-                {showLyrics && (
-                    <div className="w-80 border-l border-white/10 flex flex-col bg-black/20 backdrop-blur-sm">
-                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-white/60"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg>
+                {/* Lyrics Side Drawer (Right) */}
+                <div className={`absolute right-0 top-0 bottom-0 z-30 w-80 bg-black/40 backdrop-blur-2xl border-l border-white/10 shadow-2xl transition-transform duration-300 ease-in-out flex flex-col ${showLyrics ? 'translate-x-0' : 'translate-x-full'}`}>
+                    <div className="w-80 h-full flex flex-col">
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+                            <GlassHeading as="h2" className="text-lg font-semibold text-white flex items-center gap-2">
+                                <IconMusicNote size={18} className="text-white/60" />
                                 Lyrics
-                            </h2>
+                            </GlassHeading>
                             <div className="flex items-center gap-1">
                                 {!currentSong.lyrics && (
-                                    <button onClick={() => { setEditText(userLyrics || ''); setIsEditing(!isEditing); }} className={`p-1.5 rounded-lg transition-colors ${isEditing ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white hover:bg-white/10'}`} title={isEditing ? "Cancel" : "Edit lyrics"}>
-                                        {isEditing ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>}
-                                    </button>
+                                    <GlassButton variant="ghost" onClick={() => { setEditText(userLyrics || ''); setIsEditing(!isEditing); }} className={`p-1.5 rounded-lg transition-colors ${isEditing ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white hover:bg-white/10'}`} title={isEditing ? "Stop editing" : "Edit lyrics"}>
+                                        <IconEdit size={16} />
+                                    </GlassButton>
                                 )}
-                                <button onClick={() => setShowLyrics(false)} className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Hide lyrics">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                                </button>
+                                <GlassButton variant="ghost" onClick={() => { setIsEditing(false); setShowLyrics(false); }} className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Close lyrics">
+                                    <IconX size={16} />
+                                </GlassButton>
                             </div>
                         </div>
-                        <div ref={lyricsContainerRef} className="flex-1 overflow-y-auto scrollbar-hidden p-4 flex flex-col">
+                        <div ref={lyricsContainerRef} className="relative flex-1 overflow-y-auto scrollbar-hidden p-4 flex flex-col">
                             {isEditing ? (
                                 <>
-                                    <textarea value={editText} onChange={(e) => setEditText(e.target.value)} placeholder="Paste or type lyrics here... (LRC format supported: [mm:ss.xx]text)" className="flex-1 bg-white/5 border border-white/10 rounded-lg p-3 text-sm text-white placeholder-white/30 resize-none focus:outline-none focus:ring-1 focus:ring-white/30 font-sans leading-relaxed" />
-                                    <button onClick={saveLyrics} disabled={saving} className="mt-3 px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-neutral-200 transition-colors disabled:opacity-50">{saving ? 'Saving...' : 'Save Lyrics'}</button>
+                                    <GlassTextarea
+                                        value={editText}
+                                        onChange={(e) => setEditText(e.target.value)}
+                                        placeholder="Paste or type lyrics here... (LRC format supported: [mm:ss.xx]text)"
+                                        className="flex-1"
+                                        style={{ flex: 1, resize: 'none' }}
+                                    />
+                                    <GlassButton variant="ghost" onClick={saveLyrics} disabled={saving} className="mt-3 px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-neutral-200 transition-colors disabled:opacity-50">{saving ? 'Saving...' : 'Save Lyrics'}</GlassButton>
                                 </>
                             ) : parsedLyrics && parsedLyrics.lines.length > 0 ? (
                                 parsedLyrics.isSynced ? (
@@ -396,10 +506,13 @@ export function PlayerPage({
                                 )
                             ) : (
                                 <div className="flex-1 flex flex-col items-center justify-center text-center">
-                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" className="text-white/20 mb-4"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg>
-                                    <p className="text-white/40 text-sm mb-4">No lyrics available</p>
-                                    <div className="flex flex-col gap-2">
-                                        <button
+                                    <GlassEmptyState
+                                        icon={<IconMusicNote size={48} />}
+                                        title="No Lyrics"
+                                        description="No lyrics available for this song"
+                                    />
+                                    <div className="flex flex-col gap-2 mt-4">
+                                        <GlassButton variant="ghost"
                                             onClick={async () => {
                                                 if (!currentSong.title || !currentSong.artist) {
                                                     setToast({ message: 'Song must have title and artist to search for lyrics', type: 'error' });
@@ -430,47 +543,39 @@ export function PlayerPage({
                                         >
                                             {fetching ? (
                                                 <div className="flex items-center gap-2">
-                                                    <svg className="animate-spin w-4 h-4 text-neutral-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                    </svg>
+                                                    <IconSpinner className="animate-spin w-4 h-4 text-neutral-400" />
                                                     <span className="text-neutral-400">Searching...</span>
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" /></svg>
+                                                    <IconDownload size={16} />
                                                     Download Lyrics
                                                 </>
                                             )}
-                                        </button>
-                                        <button onClick={() => { setEditText(''); setIsEditing(true); }} className="px-4 py-2 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-colors">Add Manually</button>
+                                        </GlassButton>
+                                        <GlassButton variant="ghost" onClick={() => { setEditText(''); setIsEditing(true); }} className="px-4 py-2 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 transition-colors">Add Manually</GlassButton>
                                     </div>
                                 </div>
                             )}
                         </div>
                     </div>
-                )}
+                </div>
             </div>
 
             {/* Footer Info */}
             <div className="relative z-10 p-6 flex justify-center w-full">
-                <div className="flex items-center gap-4 text-sm text-white/30">
-                    {currentSong.bitrate && <span>{currentSong.bitrate} kbps</span>}
-                    {currentSong.sample_rate && <span>{currentSong.sample_rate} Hz</span>}
+                <div className="flex items-center gap-4 text-sm">
+                    {currentSong.bitrate && <GlassBadge>{currentSong.bitrate} kbps</GlassBadge>}
+                    {currentSong.sample_rate && <GlassBadge>{currentSong.sample_rate} Hz</GlassBadge>}
                 </div>
             </div>
 
             {/* Toast Notification */}
             {toast && (
                 <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[300] animate-fade-in">
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg backdrop-blur-md text-xs font-medium ${toast.type === 'error'
-                        ? 'bg-red-500/90 text-white'
-                        : toast.type === 'success'
-                            ? 'bg-green-500/90 text-white'
-                            : 'bg-neutral-800/90 text-white/90'
-                        }`}>
-                        <span>{toast.message}</span>
-                    </div>
+                    <GlassAlert variant={toast.type === 'error' ? 'error' : toast.type === 'success' ? 'success' : 'info'}>
+                        {toast.message}
+                    </GlassAlert>
                 </div>
             )}
         </div>

@@ -31,6 +31,13 @@ jobs:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
 
+    - name: Fetch ui-components dependency
+      run: |
+        git clone --depth 1 \
+          "https://x-access-token:${{ secrets.UI_COMPONENTS_PAT }}@github.com/knp-org/ui-components.git" \
+          ../ui-components
+        npm install --prefix ../ui-components
+
     - name: Install NPM dependencies
       run: npm install
 

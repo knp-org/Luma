@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { GlassCard, GlassButton, GlassInput , GlassHeading, GlassText} from '@knp-org/liquid-glass-ui';
+import { IconTimer } from '@knp-org/liquid-glass-ui';
 
 interface SleepTimerMenuProps {
     onClose: () => void;
@@ -63,98 +65,110 @@ export function SleepTimerMenu({
     };
 
     return (
-        <div
-            ref={menuRef}
-            className={`absolute bg-[#1a1a1a] border border-white/10 rounded-xl p-4 w-64 shadow-2xl z-[100] animate-fade-in ${className}`}
+        <GlassCard
+            className={`absolute border border-white/10 p-4 w-64 shadow-2xl z-[100] animate-fade-in ${className}`}
         >
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white font-medium text-sm flex items-center gap-2">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
+                <GlassHeading as="h3" className="text-white font-medium text-sm flex items-center gap-2">
+                    <IconTimer size={16} />
                     Sleep Timer
-                </h3>
+                </GlassHeading>
                 {activeTimer && (
-                    <button
+                    <GlassButton variant="ghost"
                         onClick={() => { onCancelTimer(); onClose(); }}
-                        className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                        className="text-xs !text-red-400 hover:!text-red-300 transition-colors"
                     >
                         Cancel
-                    </button>
+                    </GlassButton>
                 )}
             </div>
 
             {/* Action Toggle */}
-            <div className="bg-white/5 rounded-lg p-1 flex mb-4">
-                <button
+            <div className="bg-white/5 rounded-lg p-1 relative flex mb-4">
+                {/* Sliding Active Background */}
+                <div 
+                    className="absolute top-1 bottom-1 bg-white rounded-md transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]" 
+                    style={{
+                        width: 'calc(50% - 4px)',
+                        left: action === 'stop' ? '4px' : '50%',
+                    }}
+                />
+                
+                <GlassButton
+                    variant="ghost"
                     onClick={() => setAction('stop')}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${action === 'stop'
-                        ? 'bg-white text-black shadow-sm'
-                        : 'text-white/40 hover:text-white'
-                        }`}
+                    style={{ flex: 1, position: 'relative', zIndex: 10, textAlign: 'center', fontSize: '12px', padding: '6px 8px' }}
+                    className={`transition-colors ${action === 'stop' ? '!text-black font-semibold' : 'text-white/60 hover:text-white'}`}
                 >
                     Stop Music
-                </button>
-                <button
+                </GlassButton>
+                <GlassButton
+                    variant="ghost"
                     onClick={() => setAction('quit')}
-                    className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${action === 'quit'
-                        ? 'bg-white text-black shadow-sm'
-                        : 'text-white/40 hover:text-white'
-                        }`}
+                    style={{ flex: 1, position: 'relative', zIndex: 10, textAlign: 'center', fontSize: '12px', padding: '6px 8px' }}
+                    className={`transition-colors ${action === 'quit' ? '!text-black font-semibold' : 'text-white/60 hover:text-white'}`}
                 >
                     Quit App
-                </button>
+                </GlassButton>
             </div>
 
             {/* Quick Options */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="mb-4" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 {[15, 30, 45, 60].map(mins => (
-                    <button
+                    <GlassButton
                         key={mins}
+                        variant="ghost"
                         onClick={() => handleQuickSet(mins)}
-                        className="bg-white/5 hover:bg-white/10 text-white/80 hover:text-white py-2 rounded-lg text-xs transition-colors"
+                        style={{ width: '100%', display: 'block', textAlign: 'center', borderRadius: '6px', fontSize: '12px', padding: '8px' }}
+                        className="!bg-white/5 !border !border-white/10 hover:!bg-white/10 text-white/80 hover:text-white transition-all"
                     >
                         {mins} Minutes
-                    </button>
+                    </GlassButton>
                 ))}
 
-                <button
+                <GlassButton
+                    variant="ghost"
                     onClick={handleEndOfSong}
                     disabled={!currentSongDuration}
-                    className="col-span-2 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white py-2 rounded-lg text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ gridColumn: 'span 2', width: '100%', display: 'block', textAlign: 'center', borderRadius: '6px', fontSize: '12px', padding: '8px' }}
+                    className="!bg-white/5 !border !border-white/10 hover:!bg-white/10 text-white/80 hover:text-white transition-all disabled:opacity-40"
                 >
                     End of Song
-                </button>
+                </GlassButton>
             </div>
 
             {/* Custom Time */}
-            <div className="flex gap-2">
-                <input
+            <div className="flex gap-2 items-stretch">
+                <GlassInput
                     type="number"
                     value={customMinutes}
                     onChange={(e) => setCustomMinutes(e.target.value)}
                     placeholder="Custom (min)"
-                    className="flex-1 min-w-0 bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white/30 placeholder:text-white/20"
+                    containerClassName="flex-1"
+                    className="w-full"
+                    style={{ padding: '0.45rem 0.7rem', fontSize: '0.75rem', height: '100%' }}
                     onKeyDown={(e) => e.key === 'Enter' && handleCustomSet()}
                 />
-                <button
+                <GlassButton
+                    variant="ghost"
                     onClick={handleCustomSet}
                     disabled={!customMinutes}
-                    className="px-4 bg-white text-black rounded-lg text-xs font-bold hover:bg-neutral-200 disabled:opacity-50 transition-colors flex items-center justify-center uppercase tracking-wider"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', padding: '8px 16px' }}
+                    className="font-bold uppercase tracking-wider !bg-white !text-black hover:!bg-white/90 transition-all disabled:opacity-40"
                 >
                     Set
-                </button>
+                </GlassButton>
             </div>
 
             {/* Active Status */}
             {activeTimer && (
                 <div className="mt-4 pt-3 border-t border-white/10 text-center">
-                    <p className="text-xs text-white/40 mb-1">Timer Active</p>
-                    <p className="text-sm font-mono text-blue-400">
+                    <GlassText as="p" className="text-xs text-white/40 mb-1">Timer Active</GlassText>
+                    <GlassText as="p" className="text-sm font-mono text-blue-400">
                         Ends in {Math.ceil((activeTimer.endTime - Date.now()) / 60000)} min
-                    </p>
+                    </GlassText>
                 </div>
             )}
-        </div>
+        </GlassCard>
     );
 }

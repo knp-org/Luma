@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import { useModal } from '../hooks/useModal';
+import { GlassCard, GlassButton, GlassInput, GlassProgress, GlassHeading, GlassText, GlassSpinner } from '@knp-org/liquid-glass-ui';
+import { IconSync } from '@knp-org/liquid-glass-ui';
 
 
 interface SettingsProps {
@@ -18,7 +20,6 @@ export function Settings({ path, seekInterval, onSave, scanMusic, onClearCache, 
     const { showConfirm } = useModal();
     const [localPath, setLocalPath] = useState(path);
     const [localSeek, setLocalSeek] = useState(seekInterval);
-    const [themeMock, setThemeMock] = useState(true);
     const [version, setVersion] = useState("");
 
     useEffect(() => {
@@ -43,44 +44,42 @@ export function Settings({ path, seekInterval, onSave, scanMusic, onClearCache, 
         <div className="p-6 max-w-2xl mx-auto animate-fade-in w-full overflow-x-hidden pb-32">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">Settings</h2>
+                <GlassHeading as="h2" className="text-2xl font-bold text-white">Settings</GlassHeading>
                 {(localPath !== path || localSeek !== seekInterval) && (
-                    <button
+                    <GlassButton
                         onClick={handleSave}
-                        className="bg-white text-black px-4 py-1.5 rounded-full text-sm font-medium hover:scale-105 active:scale-95 transition-all"
+                        variant="primary"
+                        shape="pill"
                     >
                         Save
-                    </button>
+                    </GlassButton>
                 )}
             </div>
 
             <div className="space-y-4">
                 {/* Music Directory */}
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <GlassCard className="p-4">
                     <label className="block text-xs text-white/40 mb-2 uppercase tracking-wide">Music Directory</label>
                     <div className="flex flex-col gap-4">
-                        <div className="flex gap-2">
-                            <input
+                        <div className="flex items-stretch gap-2">
+                            <GlassInput
                                 value={localPath}
                                 onChange={(e) => setLocalPath(e.target.value)}
-                                className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-white/30"
+                                className="flex-1 !h-11 !py-0 !text-sm"
                                 placeholder="/path/to/music"
                             />
-                            <button
+                            <GlassButton
                                 onClick={scanMusic}
                                 disabled={loading}
-                                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                className="!h-11 !px-5 !text-sm shrink-0 whitespace-nowrap"
                             >
                                 {loading ? (
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <GlassSpinner size={16} />
                                 ) : (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M23 4v6h-6M1 20v-6h6" />
-                                        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
-                                    </svg>
+                                    <IconSync size={16} />
                                 )}
                                 Sync
-                            </button>
+                            </GlassButton>
                         </div>
 
                         {loading && (
@@ -89,14 +88,7 @@ export function Settings({ path, seekInterval, onSave, scanMusic, onClearCache, 
                                     <span>{progress ? `Syncing library...` : `Counting files...`}</span>
                                     <span>{progress ? `${progress.current} / ${progress.total}` : ''}</span>
                                 </div>
-                                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-blue-500 to-white transition-all duration-300 relative"
-                                        style={{ width: `${percent}%` }}
-                                    >
-                                        <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                                    </div>
-                                </div>
+                                <GlassProgress progress={percent} />
                                 {progress && (
                                     <div className="text-right text-[10px] font-mono text-white/30">
                                         {percent}% Complete
@@ -105,23 +97,28 @@ export function Settings({ path, seekInterval, onSave, scanMusic, onClearCache, 
                             </div>
                         )}
                     </div>
-                </div>
+                </GlassCard>
 
                 {/* Seek Interval */}
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <GlassCard className="p-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h4 className="font-medium text-white text-sm">Seek Interval</h4>
-                            <p className="text-xs text-white/40">Skip forward/backward</p>
+                            <GlassHeading as="h4" className="font-medium text-white text-sm">Seek Interval</GlassHeading>
+                            <GlassText as="p" className="text-xs text-white/40">Skip forward/backward</GlassText>
                         </div>
+                        {/* Plain <button>: the library's .glass-btn-ghost rule is unlayered CSS,
+                            which outranks Tailwind's layered utilities and wipes out the
+                            padding/background/font-size needed for the selected state. */}
                         <div className="flex gap-1 bg-black/40 p-1 rounded-lg">
                             {[5, 10, 15, 30].map((val) => (
                                 <button
                                     key={val}
+                                    type="button"
                                     onClick={() => setLocalSeek(val)}
-                                    className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${localSeek === val
-                                        ? 'bg-white text-black'
-                                        : 'text-white/40 hover:text-white'
+                                    aria-pressed={localSeek === val}
+                                    className={`px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-all ${localSeek === val
+                                        ? 'bg-white text-black shadow-sm'
+                                        : 'text-white/40 hover:text-white hover:bg-white/10'
                                         }`}
                                 >
                                     {val}s
@@ -129,46 +126,30 @@ export function Settings({ path, seekInterval, onSave, scanMusic, onClearCache, 
                             ))}
                         </div>
                     </div>
-                </div>
-
-                {/* Dark Mode */}
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="font-medium text-white text-sm">Dark Mode</h4>
-                            <p className="text-xs text-white/40">Always on</p>
-                        </div>
-                        <button
-                            onClick={() => setThemeMock(!themeMock)}
-                            className={`w-11 h-6 rounded-full relative transition-colors ${themeMock ? 'bg-white' : 'bg-white/20'}`}
-                        >
-                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform shadow ${themeMock ? 'translate-x-5 bg-black' : 'translate-x-0 bg-white'}`}></div>
-                        </button>
-                    </div>
-                </div>
+                </GlassCard>
 
                 {/* Clear Cache */}
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <GlassCard className="p-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h4 className="font-medium text-white text-sm">Cache Management</h4>
-                            <p className="text-xs text-white/40">Clear library data and thumbnails ({formatSize(cacheSize)})</p>
+                            <GlassHeading as="h4" className="font-medium text-white text-sm">Cache Management</GlassHeading>
+                            <GlassText as="p" className="text-xs text-white/40">Clear library data and thumbnails ({formatSize(cacheSize)})</GlassText>
                         </div>
-                        <button
+                        <GlassButton
+                            variant="danger"
                             onClick={async () => {
                                 if (await showConfirm("Are you sure? This will reset your library metadata and requires a re-sync. Your music files will NOT be deleted.")) {
                                     onClearCache();
                                 }
                             }}
-                            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm font-medium transition-colors"
                         >
                             Clear Cache
-                        </button>
+                        </GlassButton>
                     </div>
-                </div>
+                </GlassCard>
 
                 {/* Version */}
-                <p className="text-center text-white/20 text-xs pt-4">Luma v{version}</p>
+                <GlassText as="p" className="text-center text-white/20 text-xs pt-4">Luma v{version}</GlassText>
             </div>
         </div>
     );

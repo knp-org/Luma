@@ -48,6 +48,48 @@ curl -sL https://raw.githubusercontent.com/knp-org/Luma/main/install_release.sh 
     npm install
     ```
 
+## UI Library (`liquid-glass-ui`)
+
+This project uses the custom `@knp-org/liquid-glass-ui` component library for its sleek glassmorphism interface. 
+
+### Installation
+During development, Luma uses a local reference to the UI library. Ensure the `liquid-glass-ui` repository is cloned in the same parent directory alongside `Luma`:
+```text
+parent-directory/
+  ├── Luma/
+  └── liquid-glass-ui/
+```
+In `Luma/package.json`, it is installed via the local path:
+```json
+"dependencies": {
+  "@knp-org/liquid-glass-ui": "file:../liquid-glass-ui"
+}
+```
+
+### Usage
+To use the UI components, import them from the package. The global stylesheet is imported in `src/main.tsx` to apply the base styling variables:
+
+```tsx
+// In src/main.tsx
+import '@knp-org/liquid-glass-ui/dist/styles/glass-components.css';
+```
+
+Then you can import and use any component or icon in your React files:
+```tsx
+import { GlassButton, GlassCard, IconPlaySolid } from '@knp-org/liquid-glass-ui';
+
+function MyComponent() {
+  return (
+    <GlassCard>
+      <GlassButton onClick={() => alert('Clicked!')} className="flex items-center gap-2">
+        <IconPlaySolid size={20} />
+        Play Now
+      </GlassButton>
+    </GlassCard>
+  );
+}
+```
+
 ## Development
 
 To run the application in development mode with hot-reloading:

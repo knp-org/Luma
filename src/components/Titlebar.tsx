@@ -1,5 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect, useState } from 'react';
+import { GlassButton } from '@knp-org/liquid-glass-ui';
+import { IconTitlebarMinimize, IconTitlebarMaximize, IconTitlebarUnmaximize, IconTitlebarClose } from '@knp-org/liquid-glass-ui';
 
 export function Titlebar() {
     const appWindow = getCurrentWindow();
@@ -46,14 +48,16 @@ export function Titlebar() {
                 className="flex h-full flex-shrink-0 items-stretch"
                 style={{ WebkitAppRegion: 'no-drag' } as any}
             >
-                <button
+                <GlassButton
+                    variant="ghost"
                     className="w-[46px] h-full flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-colors"
                     onClick={() => appWindow.minimize().catch(() => {})}
                     title="Minimize"
                 >
-                    <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="5.5" width="10" height="1" fill="currentColor"/></svg>
-                </button>
-                <button
+                    <IconTitlebarMinimize />
+                </GlassButton>
+                <GlassButton
+                    variant="ghost"
                     className="w-[46px] h-full flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-colors"
                     onClick={() => {
                         appWindow.toggleMaximize().then(() => appWindow.isMaximized()).then(setIsMaximized).catch(() => {});
@@ -61,23 +65,19 @@ export function Titlebar() {
                     title={isMaximized ? "Restore" : "Maximize"}
                 >
                     {isMaximized ? (
-                        <svg width="12" height="12" viewBox="0 0 12 12">
-                            <path d="M3.5 3.5h5v5H3.5z" fill="none" stroke="currentColor" strokeWidth="1"/>
-                            <path d="M5 1.5h5.5v5.5" fill="none" stroke="currentColor" strokeWidth="1"/>
-                        </svg>
+                        <IconTitlebarMaximize />
                     ) : (
-                        <svg width="12" height="12" viewBox="0 0 12 12">
-                            <rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="1"/>
-                        </svg>
+                        <IconTitlebarUnmaximize />
                     )}
-                </button>
-                <button
+                </GlassButton>
+                <GlassButton
+                    variant="ghost"
                     className="w-[46px] h-full flex items-center justify-center text-white/50 hover:bg-red-500 hover:text-white transition-colors"
                     onClick={() => appWindow.close().catch(() => {})}
                     title="Close"
                 >
-                    <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                </button>
+                    <IconTitlebarClose />
+                </GlassButton>
             </div>
         </div>
     );

@@ -10,6 +10,12 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
 
+  // The local linked UI package (file:../liquid-glass-ui) should not be
+  // pre-bundled, so edits to its dist are reflected without stale caching.
+  optimizeDeps: {
+    exclude: ["@knp-org/liquid-glass-ui"],
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

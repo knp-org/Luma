@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Song } from '../types';
 import { AlbumArt } from './AlbumArt';
+import { GlassButton, GlassCard, GlassHeading, GlassText, GlassBadge, GlassSpinner } from '@knp-org/liquid-glass-ui';
 
 interface GenresProps {
     songs: Song[];
@@ -67,12 +68,13 @@ export function Genres({ songs, onPlaySong }: GenresProps) {
     if (selectedGenre) {
         return (
             <div className="p-6 h-full flex flex-col animate-fade-in pb-24">
-                <button
+                <GlassButton
+                    variant="ghost"
                     onClick={handleBack}
                     className="self-start text-sm text-white/50 hover:text-white mb-6 flex items-center gap-2 group transition-all"
                 >
                     <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Genres
-                </button>
+                </GlassButton>
 
                 <div className="flex items-end gap-8 mb-10">
                     <div className="w-56 h-56 bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden border border-white/10 relative group shrink-0">
@@ -88,12 +90,12 @@ export function Genres({ songs, onPlaySong }: GenresProps) {
                         </div>
                     </div>
                     <div className="min-w-0">
-                        <h1 className="text-5xl font-bold text-white mb-3 tracking-tight truncate pb-1">
+                        <GlassHeading as="h1" className="text-5xl font-bold text-white mb-3 tracking-tight truncate pb-1">
                             {selectedGenre.name}
-                        </h1>
-                        <p className="text-sm text-white/30 font-mono mt-2">
-                            {selectedGenre.songs.length} Tracks
-                        </p>
+                        </GlassHeading>
+                        <div className="mt-2">
+                            <GlassBadge>{selectedGenre.songs.length} Tracks</GlassBadge>
+                        </div>
                     </div>
                 </div>
 
@@ -129,16 +131,19 @@ export function Genres({ songs, onPlaySong }: GenresProps) {
 
     return (
         <div className="p-6 h-full flex flex-col animate-fade-in">
-            <h1 className="text-3xl font-bold text-white mb-8 tracking-tight drop-shadow-lg pl-2">Genres</h1>
+            <div className="flex items-center justify-between mb-8 pl-2">
+                <GlassHeading as="h1" className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">Genres</GlassHeading>
+                <GlassBadge>{genres.length} genres</GlassBadge>
+            </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 overflow-y-auto scrollbar-hidden pb-32">
+            <div className="grid grid-cols-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 overflow-y-auto scrollbar-hidden pb-32">
                 {genres.slice(0, visibleCount).map((genre, idx) => (
                     <div
                         key={idx}
                         onClick={() => setSelectedGenre(genre)}
-                        className="group flex flex-col cursor-pointer"
+                        className="group flex flex-col cursor-pointer min-w-0"
                     >
-                        <div className="aspect-square bg-neutral-900 rounded-2xl mb-4 overflow-hidden border border-white/5 shadow-lg group-hover:shadow-2xl group-hover:shadow-black/50 transition-all group-hover:-translate-y-1 relative ring-1 ring-white/5 group-hover:ring-white/20">
+                        <GlassCard width="100%" className="!p-0 aspect-square rounded-2xl mb-4 overflow-hidden border border-white/5 shadow-lg group-hover:shadow-2xl group-hover:shadow-black/50 transition-all group-hover:-translate-y-1 relative ring-1 ring-white/5 group-hover:ring-white/20">
                             {/* Unsplash image or generate pattern for genre? 
                                 Using hero song art for now, heavily styled.
                             */}
@@ -146,21 +151,19 @@ export function Genres({ songs, onPlaySong }: GenresProps) {
                                 song={genre.heroSong}
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                             />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                {/* Optional: Genre Icon Overlay */}
-                            </div>
-                        </div>
-                        <h3 className="font-semibold text-white/90 truncate text-sm px-1 group-hover:text-white transition-colors">
+                            <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+                        </GlassCard>
+                        <GlassHeading as="h3" className="font-semibold text-white/90 truncate text-sm px-1 group-hover:text-white transition-colors">
                             {genre.name}
-                        </h3>
-                        <p className="text-[11px] text-white/40 truncate px-1 group-hover:text-white/60 transition-colors">
+                        </GlassHeading>
+                        <GlassText as="p" className="text-[11px] text-white/40 truncate px-1 group-hover:text-white/60 transition-colors">
                             {genre.songs.length} Songs
-                        </p>
+                        </GlassText>
                     </div>
                 ))}
                 {visibleCount < genres.length && (
                     <div ref={loadMoreRef} className="col-span-full h-20 flex items-center justify-center">
-                        <div className="w-6 h-6 border-2 border-white/20 border-t-white/80 rounded-full animate-spin"></div>
+                        <GlassSpinner size={24} />
                     </div>
                 )}
             </div>

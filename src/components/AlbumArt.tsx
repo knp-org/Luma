@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Song } from '../types';
+import { IconMusicNote } from '@knp-org/liquid-glass-ui';
 
 // Simple memory cache to avoid re-fetching same art
 const artCache = new Map<string, string>();
@@ -11,6 +12,8 @@ interface AlbumArtProps {
     placeholderContent?: React.ReactNode;
     useOriginal?: boolean;
     objectFit?: "cover" | "contain";
+    /** Use the longer fade + scale swap animation (for large hero artwork) */
+    smooth?: boolean;
 }
 
 // Export hook for other components to use
@@ -48,7 +51,7 @@ export function useSongArt(song: Song | null) {
     return art;
 }
 
-export function AlbumArt({ song, className, placeholderContent, useOriginal = false, objectFit = "cover" }: AlbumArtProps) {
+export function AlbumArt({ song, className, placeholderContent, useOriginal = false, objectFit = "cover", smooth = false }: AlbumArtProps) {
     const [src, setSrc] = useState<string | null>(null);
     const [isVisible, setIsVisible] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -118,9 +121,7 @@ export function AlbumArt({ song, className, placeholderContent, useOriginal = fa
         return (
             <div className={`${className} flex items-center justify-center bg-white/5 text-white/20`}>
                 {placeholderContent || (
-                    <svg width="40%" height="40%" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 3v9.28a4.39 4.39 0 00-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z" />
-                    </svg>
+                    <IconMusicNote size="40%" />
                 )}
             </div>
         );
@@ -129,7 +130,7 @@ export function AlbumArt({ song, className, placeholderContent, useOriginal = fa
     return (
         <div ref={imgRef} className={`${className} relative overflow-hidden bg-white/5`}>
             {src ? (
-                <img src={src} alt="" className={`w-full h-full ${objectFit === "contain" ? "object-contain" : "object-cover"} animate-fade-in`} />
+                <img key={src} src={src} alt="" className={`w-full h-full ${objectFit === "contain" ? "object-contain" : "object-cover"} ${smooth ? 'animate-art-in' : 'animate-fade-in'}`} />
             ) : (
                 <div className="w-full h-full animate-pulse bg-white/5" />
             )}

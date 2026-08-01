@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { Song } from '../types';
 import { AlbumArt } from './AlbumArt';
 import { useModal } from '../hooks/useModal';
+import { GlassButton, GlassInput, GlassHeading, GlassText, GlassModal, GlassDivider } from '@knp-org/liquid-glass-ui';
+import { IconClose, IconEdit } from '@knp-org/liquid-glass-ui';
 
 
 interface SongInfoModalProps {
@@ -60,14 +62,12 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
     }
 
     return (
-        <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
-            onClick={onClose}
+        <GlassModal
+            isOpen={true}
+            onClose={onClose}
+            footer={null}
+            className="max-w-lg !p-0 !overflow-hidden border border-white/10 bg-neutral-900 rounded-2xl shadow-2xl"
         >
-            <div
-                className="bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
-                onClick={(e) => e.stopPropagation()}
-            >
                 {/* Header with album art */}
                 <div className="relative h-64 bg-neutral-950 flex items-center justify-center overflow-hidden border-b border-white/5">
                     {/* Blurred background version */}
@@ -89,26 +89,24 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                     </div>
 
                     <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-transparent to-transparent pointer-events-none"></div>
-                    <button
+                    <GlassButton
+                        variant="ghost"
                         onClick={onClose}
                         className="absolute top-4 right-4 w-8 h-8 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white/50 hover:text-white transition-all z-20"
                     >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                        </svg>
-                    </button>
+                        <IconClose />
+                    </GlassButton>
 
                     {/* Edit Toggle (only if not editing) */}
                     {!isEditing && (
-                        <button
+                        <GlassButton
+                            variant="ghost"
                             onClick={() => setIsEditing(true)}
                             className="absolute bottom-4 right-4 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 rounded-lg flex items-center gap-2 text-white/70 hover:text-white transition-all z-20 text-sm font-medium"
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
-                            </svg>
+                            <IconEdit size={16} />
                             Edit Tags
-                        </button>
+                        </GlassButton>
                     )}
                 </div>
 
@@ -118,38 +116,34 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                         <div className="space-y-4">
                             {/* Reuse input style */}
                             {(() => {
-                                const inputClass = "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-white/30 transition-colors placeholder:text-white/20";
                                 const labelClass = "text-xs font-mono uppercase text-white/40 block mb-1";
                                 return (
                                     <>
                                         <div>
                                             <label className={labelClass}>Title</label>
-                                            <input
+                                            <GlassInput
                                                 type="text"
                                                 value={editedTitle}
                                                 onChange={(e) => setEditedTitle(e.target.value)}
-                                                className={inputClass}
                                                 placeholder="Song Title"
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className={labelClass}>Artist</label>
-                                                <input
+                                                <GlassInput
                                                     type="text"
                                                     value={editedArtist}
                                                     onChange={(e) => setEditedArtist(e.target.value)}
-                                                    className={inputClass}
                                                     placeholder="Artist Name"
                                                 />
                                             </div>
                                             <div>
                                                 <label className={labelClass}>Album</label>
-                                                <input
+                                                <GlassInput
                                                     type="text"
                                                     value={editedAlbum}
                                                     onChange={(e) => setEditedAlbum(e.target.value)}
-                                                    className={inputClass}
                                                     placeholder="Album Name"
                                                 />
                                             </div>
@@ -158,51 +152,50 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                                         <div className="grid grid-cols-3 gap-4">
                                             <div className="col-span-1">
                                                 <label className={labelClass}>Track #</label>
-                                                <input
+                                                <GlassInput
                                                     type="text"
                                                     value={editedTrack}
                                                     onChange={(e) => setEditedTrack(e.target.value.replace(/\D/g, ''))}
-                                                    className={inputClass}
                                                     placeholder="1"
                                                 />
                                             </div>
                                             <div className="col-span-1">
                                                 <label className={labelClass}>Year</label>
-                                                <input
+                                                <GlassInput
                                                     type="text"
                                                     value={editedYear}
                                                     onChange={(e) => setEditedYear(e.target.value.replace(/\D/g, ''))}
-                                                    className={inputClass}
                                                     placeholder="2024"
                                                 />
                                             </div>
                                             <div className="col-span-1">
                                                 <label className={labelClass}>Genre</label>
-                                                <input
+                                                <GlassInput
                                                     type="text"
                                                     value={editedGenre}
                                                     onChange={(e) => setEditedGenre(e.target.value)}
-                                                    className={inputClass}
                                                     placeholder="Pop"
                                                 />
                                             </div>
                                         </div>
 
                                         <div className="flex gap-3 pt-4 border-t border-white/5">
-                                            <button
+                                            <GlassButton
+                                                variant="ghost"
                                                 onClick={() => setIsEditing(false)}
                                                 className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-white/60 transition-colors text-sm font-medium"
                                                 disabled={isSaving}
                                             >
                                                 Cancel
-                                            </button>
-                                            <button
+                                            </GlassButton>
+                                            <GlassButton
+                                                variant="ghost"
                                                 onClick={handleSave}
                                                 className="flex-1 py-2.5 bg-white hover:bg-white/90 rounded-xl text-black font-bold transition-all text-sm shadow-lg shadow-white/5"
                                                 disabled={isSaving}
                                             >
                                                 {isSaving ? "Saving..." : "Save Changes"}
-                                            </button>
+                                            </GlassButton>
                                         </div>
                                     </>
                                 );
@@ -211,8 +204,8 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                     ) : (
                         <>
                             <div>
-                                <h2 className="text-2xl font-bold text-white leading-tight">{song.title || "Unknown Title"}</h2>
-                                <p className="text-white/50 text-lg">{song.artist || "Unknown Artist"}</p>
+                                <GlassHeading as="h2" className="text-2xl font-bold text-white leading-tight">{song.title || "Unknown Title"}</GlassHeading>
+                                <GlassText as="p" className="text-white/50 text-lg">{song.artist || "Unknown Artist"}</GlassText>
                             </div>
 
                             <div className="space-y-2 text-sm pt-2">
@@ -227,7 +220,8 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                                 />
 
                                 {/* Technical Info Group */}
-                                <div className="pt-4 mt-2 border-t border-white/10">
+                                <GlassDivider className="my-4" />
+                                <div>
                                     <div className="text-white/30 font-mono uppercase text-xs mb-3">Technical Info</div>
                                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                         <InfoRow label="Bitrate" value={song.bitrate ? `${song.bitrate} kbps` : "—"} mono compact />
@@ -248,7 +242,8 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                                 </div>
 
                                 {/* File Path */}
-                                <div className="pt-2 mt-4 border-t border-white/10">
+                                <GlassDivider className="my-4" />
+                                <div>
                                     <span className="text-white/30 font-mono uppercase text-xs block mb-1">File Path</span>
                                     <span className="text-white/40 text-xs break-all font-mono leading-relaxed select-text">{song.path}</span>
                                 </div>
@@ -257,16 +252,16 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                     )}
 
                     {!isEditing && (
-                        <button
+                        <GlassButton
+                            variant="ghost"
                             onClick={onClose}
                             className="w-full py-2.5 bg-white/10 hover:bg-white/15 rounded-xl text-white/80 hover:text-white transition-colors text-sm font-medium mt-4"
                         >
                             Close
-                        </button>
+                        </GlassButton>
                     )}
                 </div>
-            </div>
-        </div>
+        </GlassModal>
     );
 }
 

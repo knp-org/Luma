@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Playlist, Song } from '../types';
 import { AlbumArt } from './AlbumArt';
 import { useModal } from '../hooks/useModal';
-
+import { GlassButton, GlassInput, GlassCard, GlassHeading, GlassText, GlassBadge, GlassEmptyState } from '@knp-org/liquid-glass-ui';
+import { IconMusicNote, IconPlaySolid, IconShuffle, IconTrash } from '@knp-org/liquid-glass-ui';
 
 interface PlaylistsProps {
     songs: Song[];
@@ -84,18 +85,20 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
     return (
         <div className="p-6 h-full flex flex-col">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">Your Playlists</h1>
-                <p className="text-white/30 text-sm mt-1 font-light">{playlists.length} playlists</p>
+                <GlassHeading as="h1" className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">Your Playlists</GlassHeading>
+                <div className="mt-2">
+                    <GlassBadge>{playlists.length} playlists</GlassBadge>
+                </div>
             </div>
 
             {selectedPlaylist ? (
                 <div className="flex-1 flex flex-col animate-fade-in pb-20">
-                    <button
+                    <GlassButton variant="ghost"
                         onClick={() => setSelectedPlaylist(null)}
                         className="self-start text-sm text-white/50 hover:text-white mb-4 flex items-center gap-2 group transition-all"
                     >
                         <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Playlists
-                    </button>
+                    </GlassButton>
 
                     <div className="flex items-end gap-6 mb-8">
                         <div className="w-48 h-48 bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden border border-white/10 relative group">
@@ -140,35 +143,40 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
                         </div>
                         <div className="flex flex-col gap-4">
                             <div>
-                                <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">{selectedPlaylist.name}</h1>
-                                <p className="text-white/50 font-mono text-sm">{selectedPlaylist.tracks.length} Songs</p>
+                                <GlassHeading as="h1" className="text-4xl font-bold text-white mb-2 tracking-tight">{selectedPlaylist.name}</GlassHeading>
+                                <div className="mt-1">
+                                    <GlassBadge>{selectedPlaylist.tracks.length} Songs</GlassBadge>
+                                </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button
+                                <GlassButton
                                     onClick={() => handlePlayContext(selectedPlaylist, 0, false)}
-                                    className="px-6 py-2 bg-white text-black rounded-full font-bold hover:scale-105 active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-white/10"
+                                    shape="pill"
+                                    variant="primary"
+                                    className="font-bold flex items-center gap-2"
                                 >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M8 5v14l11-7z" />
-                                    </svg>
+                                    <IconPlaySolid size={20} />
                                     Play
-                                </button>
-                                <button
+                                </GlassButton>
+                                <GlassButton
                                     onClick={() => handlePlayContext(selectedPlaylist, 0, true)}
-                                    className="px-6 py-2 bg-white/10 text-white rounded-full font-bold hover:bg-white/20 active:scale-95 transition-all flex items-center gap-2"
+                                    shape="pill"
+                                    className="font-bold flex items-center gap-2"
                                 >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
-                                    </svg>
+                                    <IconShuffle size={20} />
                                     Shuffle
-                                </button>
+                                </GlassButton>
                             </div>
                         </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto scrollbar-hidden">
                         {selectedPlaylist.tracks.length === 0 ? (
-                            <div className="text-white/30 italic font-light">No songs in this playlist yet. Add them from your Library.</div>
+                            <GlassEmptyState
+                                icon={<IconMusicNote size={48} />}
+                                title="Empty Playlist"
+                                description="No songs in this playlist yet. Add them from your Library."
+                            />
                         ) : (
                             selectedPlaylist.tracks.map((trackPath, idx) => {
                                 const song = songs.find(s => s.path === trackPath);
@@ -198,7 +206,7 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
                                         </div>
 
                                         {/* Remove Button */}
-                                        <button
+                                        <GlassButton variant="ghost"
                                             onClick={async (e) => {
                                                 e.stopPropagation();
                                                 try {
@@ -215,10 +223,8 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
                                             className="p-2 text-white/20 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                                             title="Remove from playlist"
                                         >
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
-                                            </svg>
-                                        </button>
+                                            <IconTrash size={18} />
+                                        </GlassButton>
                                     </div>
                                 );
                             })
@@ -229,23 +235,22 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
                 <>
                     {/* Create New */}
                     <form onSubmit={createPlaylist} className="mb-8 flex gap-2">
-                        <input
+                        <GlassInput
                             value={newPlaylistName}
                             onChange={(e) => setNewPlaylistName(e.target.value)}
                             placeholder="New Playlist Name..."
-                            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-white/50 w-64 transition-all text-sm backdrop-blur-md"
+                            className="w-64"
                         />
-                        <button
+                        <GlassButton
                             type="submit"
                             disabled={creating}
-                            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition-all text-sm border border-white/5 hover:border-white/20"
                         >
                             {creating ? "..." : "+ Create"}
-                        </button>
+                        </GlassButton>
                     </form>
 
-                    {/* Grid - Made smaller (cols-3 -> 4 -> 5) */}
-                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {/* Grid */}
+                    <div className="grid grid-cols-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                         {playlists.map((pl, idx) => (
                             <PlaylistCard
                                 key={idx}
@@ -261,8 +266,6 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
     );
 }
 
-import { useMemo } from 'react';
-
 function PlaylistCard({ playlist, songs, onSelect }: { playlist: Playlist, songs: Song[], onSelect: () => void }) {
     const { showConfirm } = useModal();
     const collage = useMemo(() => {
@@ -275,9 +278,9 @@ function PlaylistCard({ playlist, songs, onSelect }: { playlist: Playlist, songs
     }, [playlist.tracks.length, songs.length]); // Dependencies: only recalc if counts change to avoid frequent updates
 
     return (
-        <div
+        <GlassCard
             onClick={onSelect}
-            className="group bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-3 hover:bg-white/10 transition-all cursor-pointer flex flex-col hover:shadow-2xl hover:shadow-black/50 hover:border-white/20 hover:-translate-y-1"
+            className="group w-full cursor-pointer !p-3 flex flex-col hover:-translate-y-1 hover:border-white/20"
         >
             <div className="flex justify-between items-start mb-3 overflow-hidden rounded-lg relative shadow-inner group-hover:shadow-none transition-all">
                 <div className="w-full aspect-square bg-neutral-900 grid grid-cols-2 grid-rows-2 relative">
@@ -301,10 +304,10 @@ function PlaylistCard({ playlist, songs, onSelect }: { playlist: Playlist, songs
 
             <div className="flex justify-between items-center">
                 <div className="flex-1 min-w-0 pr-2">
-                    <h3 className="font-medium text-white/90 truncate text-sm px-1">{playlist.name}</h3>
-                    <p className="text-[10px] text-white/40 font-mono px-1">{playlist.tracks.length} tracks</p>
+                    <GlassHeading as="h3" className="font-medium text-white/90 truncate text-sm px-1">{playlist.name}</GlassHeading>
+                    <GlassText as="p" className="text-[10px] text-white/40 font-mono px-1">{playlist.tracks.length} tracks</GlassText>
                 </div>
-                <button
+                <GlassButton variant="ghost"
                     onClick={async (e) => {
                         e.stopPropagation();
                         // Confirm?
@@ -317,11 +320,9 @@ function PlaylistCard({ playlist, songs, onSelect }: { playlist: Playlist, songs
                     className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded transition-all"
                     title="Delete Playlist"
                 >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
-                    </svg>
-                </button>
+                    <IconTrash size={14} />
+                </GlassButton>
             </div>
-        </div>
+        </GlassCard>
     );
 }

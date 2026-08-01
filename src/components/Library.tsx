@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import { Song, Playlist } from '../types';
 import { AlbumArt } from './AlbumArt';
+import { GlassInput, GlassButton, GlassHeading, GlassText, GlassSearch, GlassEmptyState, GlassBadge, GlassSkeleton } from '@knp-org/liquid-glass-ui';
+import { IconPlaySolid, IconMoreVertical, IconCheck, IconX, IconPause, IconInfo, IconPlus, IconMusicNote } from '@knp-org/liquid-glass-ui';
 
 interface LibraryProps {
     songs: Song[];
@@ -62,54 +64,40 @@ export function Library({
             <div className="p-6 border-b border-white/5">
                 <div className="flex items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">{title}</h1>
-                        <p className="text-white/30 text-sm mt-1 font-light">{songs.length} songs</p>
+                        <GlassHeading as="h1" className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">{title}</GlassHeading>
+                        <div className="mt-2">
+                            <GlassBadge>{songs.length} songs</GlassBadge>
+                        </div>
                     </div>
-                    <div className="relative flex-1 max-w-md">
-                        <svg
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
-                            width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                        >
-                            <circle cx="11" cy="11" r="8" />
-                            <path d="m21 21-4.35-4.35" />
-                        </svg>
-                        <input
-                            type="text"
+                    <div className="flex-1 max-w-md">
+                        <GlassSearch
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search songs, artists, albums..."
-                            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/20 transition-all"
                         />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                            >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M18 6L6 18M6 6l12 12" />
-                                </svg>
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 scrollbar-hidden">
                 {loading ? (
-                    <div className="flex items-center justify-center h-64">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white"></div>
+                    <div className="flex flex-col gap-3 p-4">
+                        <GlassSkeleton height="48px" />
+                        <GlassSkeleton height="48px" />
+                        <GlassSkeleton height="48px" />
                     </div>
                 ) : songs.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-white/40 gap-4">
-                        <p className="font-light">{emptyMessage}</p>
-                        {showSyncButton && (
-                            <button
-                                onClick={onGoToSettings}
-                                className="px-4 py-2 bg-white text-black hover:bg-neutral-200 rounded-lg text-sm transition-colors font-medium"
-                            >
-                                Go to settings to sync
-                            </button>
-                        )}
+                        <GlassEmptyState
+                            icon={<IconMusicNote size={48} />}
+                            title="No Songs"
+                            description={emptyMessage}
+                            action={showSyncButton ? (
+                                <GlassButton onClick={onGoToSettings} variant="primary">
+                                    Go to settings to sync
+                                </GlassButton>
+                            ) : undefined}
+                        />
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-1 pb-32">
@@ -196,9 +184,7 @@ const SongRow = memo(({
                 {/* Play overlay on hover (only when not current) */}
                 {!isCurrent && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                            <path d="M8 5v14l11-7L8 5z" />
-                        </svg>
+                            <IconPlaySolid size={20} fill="white" />
                     </div>
                 )}
 
@@ -215,21 +201,19 @@ const SongRow = memo(({
                             </>
                         ) : (
                             // Paused icon
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                            </svg>
+                            <IconPause size={20} fill="white" />
                         )}
                     </div>
                 )}
             </div>
 
             <div className="flex-1 min-w-0">
-                <h4 className={`font-medium truncate text-sm ${isCurrent ? "text-white" : "text-white/80"}`}>
+                <GlassHeading as="h4" className={`font-medium truncate text-sm ${isCurrent ? "text-white" : "text-white/80"}`}>
                     {song.title || song.path.split('/').pop()}
-                </h4>
-                <p className="text-xs text-white/40 truncate group-hover:text-white/60 transition-colors">
+                </GlassHeading>
+                <GlassText as="p" className="text-xs text-white/40 truncate group-hover:text-white/60 transition-colors">
                     {song.artist || "Unknown Artist"} • {song.album || "Unknown Album"}
-                </p>
+                </GlassText>
             </div>
             <div className="text-xs font-mono text-white/20 pl-4 group-hover:text-white/50 w-12 text-right">
                 {Math.floor(song.duration_seconds / 60)}:{String(Math.floor(song.duration_seconds) % 60).padStart(2, '0')}
@@ -237,19 +221,16 @@ const SongRow = memo(({
 
             {/* Actions Menu */}
             <div className="relative ml-2">
-                <button
+                <GlassButton
+                    variant="ghost"
                     onClick={(e) => {
                         e.stopPropagation();
                         onMenuToggle();
                     }}
-                    className={`p-2 rounded-md transition-all ${menuOpen
-                        ? 'text-white bg-white/10 opacity-100'
-                        : 'text-white/30 hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100'}`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${menuOpen ? 'bg-white/10 text-white opacity-100' : 'text-white/30 hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100'}`}
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                    </svg>
-                </button>
+                    <IconMoreVertical size={20} />
+                </GlassButton>
 
                 {menuOpen && (
                     <div
@@ -257,7 +238,7 @@ const SongRow = memo(({
                         className="absolute right-0 top-full mt-1 w-56 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl z-[100] overflow-visible animate-fade-in ring-1 ring-white/10"
                     >
                         {/* Song Info Option */}
-                        <button
+                        <GlassButton variant="ghost"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onShowInfo();
@@ -265,15 +246,13 @@ const SongRow = memo(({
                             }}
                             className="w-full text-left px-4 py-3 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-3 border-b border-white/5 relative z-10"
                         >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-white/50">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
-                            </svg>
+                            <IconInfo size={18} className="text-white/50" />
                             Song Info
-                        </button>
+                        </GlassButton>
 
                         {/* Add to Playlist Trigger - with + icon */}
                         <div className="relative">
-                            <button
+                            <GlassButton variant="ghost"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setShowSubmenu(!showSubmenu);
@@ -281,12 +260,10 @@ const SongRow = memo(({
                                 className={`w-full text-left px-4 py-3 text-sm transition-colors flex items-center justify-between ${showSubmenu ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/50">
-                                        <path d="M12 5v14M5 12h14" />
-                                    </svg>
+                                    <IconPlus size={18} className="text-white/50" />
                                     Add to Playlist
                                 </div>
-                            </button>
+                            </GlassButton>
 
                             {/* Side Submenu - Absolute Left */}
                             {showSubmenu && (
@@ -304,7 +281,7 @@ const SongRow = memo(({
                                             playlists.map((pl, i) => {
                                                 const isAdded = pl.tracks.includes(song.path);
                                                 return (
-                                                    <button
+                                                    <GlassButton variant="ghost"
                                                         key={i}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -314,13 +291,11 @@ const SongRow = memo(({
                                                     >
                                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isAdded ? 'bg-white border-white' : 'border-white/30 group-hover/item:border-white/60'}`}>
                                                             {isAdded && (
-                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="4">
-                                                                    <path d="M20 6L9 17l-5-5" />
-                                                                </svg>
+                                                                <IconCheck size={10} stroke="black" />
                                                             )}
                                                         </div>
                                                         <span className="truncate">{pl.name}</span>
-                                                    </button>
+                                                    </GlassButton>
                                                 );
                                             })
                                         )}

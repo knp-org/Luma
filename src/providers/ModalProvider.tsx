@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { ModalContext } from '../context/ModalContext';
-import { Modal } from '../components/Modal';
+import { GlassModal, GlassButton } from '@knp-org/liquid-glass-ui';
 
 interface ModalState {
     isOpen: boolean;
@@ -12,9 +12,6 @@ interface ModalState {
 
 export function ModalProvider({ children }: { children: React.ReactNode }) {
     const [modal, setModal] = useState<ModalState | null>(null);
-
-    // We use a ref to keep track of the current resolve function to avoid stale closures if needed,
-    // though storing it in state directly as we do above is also fine for this simple case.
 
     const showAlert = useCallback((message: string, title: string = "Alert") => {
         return new Promise<void>((resolve) => {
@@ -51,15 +48,25 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
         <ModalContext.Provider value={{ showAlert, showConfirm }}>
             {children}
             {modal && (
-                <Modal
+                <GlassModal
+                    isOpen={modal.isOpen}
+                    onClose={() => handleClose(false)}
                     title={modal.title}
-                    message={modal.message}
-                    type={modal.type}
-                    onConfirm={() => handleClose(true)}
-                    onCancel={() => handleClose(false)} // Alert usually ignores this or treats as resolved(void)
-                    confirmText="OK"
-                    cancelText="Cancel"
-                />
+                    footer={
+                        <div className="flex justify-end gap-3">
+                            {modal.type === 'confirm' && (
+                                <GlassButton onClick={() => handleClose(false)}>
+                                    Cancel
+                                </GlassButton>
+                            )}
+                            <GlassButton variant="primary" onClick={() => handleClose(true)}>
+                                OK
+                            </GlassButton>
+                        </div>
+                    }
+                >
+                    {modal.message}
+                </GlassModal>
             )}
         </ModalContext.Provider>
     );

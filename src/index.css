@@ -112,6 +112,34 @@ body {
     animation: fade-in 0.2s ease-out;
 }
 
+/* Album art swap animation */
+@keyframes art-in {
+    from {
+        opacity: 0;
+        transform: scale(0.94);
+        filter: blur(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+    }
+}
+
+.animate-art-in {
+    animation: art-in 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Modals sit over dense artwork grids — the library default backdrop is too
+   see-through to separate the dialog from the content behind it. */
+/* `body` prefix: the library stylesheet is imported after this one in main.tsx,
+   so a bare .glass-modal-backdrop rule would lose the cascade tie. */
+body .glass-modal-backdrop {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+}
+
 /* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
     width: 8px;

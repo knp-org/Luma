@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Song } from '../types';
 import { AlbumArt } from './AlbumArt';
+import { GlassButton, GlassCard, GlassHeading, GlassText, GlassBadge, GlassSpinner } from '@knp-org/liquid-glass-ui';
 
 interface AlbumsProps {
     songs: Song[];
@@ -78,27 +79,28 @@ export function Albums({ songs, onPlaySong }: AlbumsProps) {
     if (selectedAlbum) {
         return (
             <div className="p-6 h-full flex flex-col animate-fade-in pb-24">
-                <button
+                <GlassButton
+                    variant="ghost"
                     onClick={handleBack}
                     className="self-start text-sm text-white/50 hover:text-white mb-6 flex items-center gap-2 group transition-all"
                 >
                     <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Albums
-                </button>
+                </GlassButton>
 
                 <div className="flex items-end gap-8 mb-10">
                     <div className="w-56 h-56 bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden border border-white/10 relative group shrink-0">
                         <AlbumArt song={selectedAlbum.heroSong} className="w-full h-full object-cover" />
                     </div>
                     <div className="min-w-0">
-                        <h1 className="text-5xl font-bold text-white mb-3 tracking-tight truncate pb-1">
+                        <GlassHeading as="h1" className="text-5xl font-bold text-white mb-3 tracking-tight truncate pb-1">
                             {selectedAlbum.name}
-                        </h1>
-                        <p className="text-xl text-white/60 font-medium">
+                        </GlassHeading>
+                        <GlassText as="p" className="text-xl text-white/60 font-medium">
                             {selectedAlbum.artist}
-                        </p>
-                        <p className="text-sm text-white/30 font-mono mt-2">
-                            {selectedAlbum.songs.length} Tracks
-                        </p>
+                        </GlassText>
+                        <div className="mt-2">
+                            <GlassBadge>{selectedAlbum.songs.length} Tracks</GlassBadge>
+                        </div>
                     </div>
                 </div>
 
@@ -134,34 +136,37 @@ export function Albums({ songs, onPlaySong }: AlbumsProps) {
 
     return (
         <div className="p-6 h-full flex flex-col animate-fade-in">
-            <h1 className="text-3xl font-bold text-white mb-8 tracking-tight drop-shadow-lg pl-2">Albums</h1>
+            <div className="flex items-center justify-between mb-8 pl-2">
+                <GlassHeading as="h1" className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">Albums</GlassHeading>
+                <GlassBadge>{albums.length} albums</GlassBadge>
+            </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 overflow-y-auto scrollbar-hidden pb-32">
+            <div className="grid grid-cols-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 overflow-y-auto scrollbar-hidden pb-32">
                 {albums.slice(0, visibleCount).map((album, idx) => (
                     <div
                         key={idx}
                         onClick={() => setSelectedAlbum(album)}
-                        className="group flex flex-col cursor-pointer"
+                        className="group flex flex-col cursor-pointer min-w-0"
                     >
-                        <div className="aspect-square bg-neutral-900 rounded-2xl mb-4 overflow-hidden border border-white/5 shadow-lg group-hover:shadow-2xl group-hover:shadow-black/50 transition-all group-hover:-translate-y-1 relative ring-1 ring-white/5 group-hover:ring-white/20">
+                        <GlassCard width="100%" className="!p-0 aspect-square rounded-2xl mb-4 overflow-hidden border border-white/5 shadow-lg group-hover:shadow-2xl group-hover:shadow-black/50 transition-all group-hover:-translate-y-1 relative ring-1 ring-white/5 group-hover:ring-white/20">
                             <AlbumArt
                                 song={album.heroSong}
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                             />
                             <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
-                        </div>
-                        <h3 className="font-semibold text-white/90 truncate text-sm px-1 group-hover:text-white transition-colors">
+                        </GlassCard>
+                        <GlassHeading as="h3" className="font-semibold text-white/90 truncate text-sm px-1 group-hover:text-white transition-colors">
                             {album.name}
-                        </h3>
-                        <p className="text-[11px] text-white/40 truncate px-1 group-hover:text-white/60 transition-colors">
+                        </GlassHeading>
+                        <GlassText as="p" className="text-[11px] text-white/40 truncate px-1 group-hover:text-white/60 transition-colors">
                             {album.artist}
-                        </p>
+                        </GlassText>
                     </div>
                 ))}
                 {/* Sentinel for lazy loading */}
                 {visibleCount < albums.length && (
                     <div ref={loadMoreRef} className="col-span-full h-20 flex items-center justify-center">
-                        <div className="w-6 h-6 border-2 border-white/20 border-t-white/80 rounded-full animate-spin"></div>
+                        <GlassSpinner size={24} />
                     </div>
                 )}
             </div>
