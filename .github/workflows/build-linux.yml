@@ -31,12 +31,13 @@ jobs:
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
 
-    - name: Fetch ui-components dependency
+    - name: Fetch liquid-glass-ui dependency
       run: |
         git clone --depth 1 \
-          "https://x-access-token:${{ secrets.UI_COMPONENTS_PAT }}@github.com/knp-org/ui-components.git" \
-          ../ui-components
-        npm install --prefix ../ui-components
+          "https://x-access-token:${{ secrets.UI_COMPONENTS_PAT }}@github.com/knp-org/liquid-glass-ui.git" \
+          ../liquid-glass-ui
+        npm install --prefix ../liquid-glass-ui
+        npm run build --prefix ../liquid-glass-ui
 
     - name: Install NPM dependencies
       run: npm install
