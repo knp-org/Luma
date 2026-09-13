@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { MobileNavigation } from "./components/Sidebar";
 import { QueueEditor } from "./components/QueueEditor";
+import { PillPlayer } from "./components/PillPlayer";
+import { usePillMode } from "./hooks/usePillMode";
 import { exit } from "@tauri-apps/plugin-process";
 import { Song } from "./models";
 import { usePlayer, usePlaylists, useLibrary, usePlaybackPersistence } from "./hooks";
@@ -21,7 +24,7 @@ import {
   Analytics,
   Titlebar,
 } from "./components";
-import { GlassButton, GlassModal} from "@knp-org/liquid-glass-ui";
+import { GlassButton, GlassModal, GlassAlert, GlassHeading} from "@knp-org/liquid-glass-ui";
 
 type View = "library" | "albums" | "playlists" | "settings" | "genres" | "favorites" | "analytics" | "queue";
 
@@ -32,17 +35,23 @@ function App() {
   const [infoSong, setInfoSong] = useState<Song | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [sleepTimer, setSleepTimer] = useState<{ endTime: number, action: 'stop' | 'quit', originalDuration: number } | null>(null);
+  const pill = usePillMode();
+
+  useEffect(() => {
+    document.documentElement.dataset.pillMode = String(pill.active);
+    return () => { delete document.documentElement.dataset.pillMode; };
+  }, [pill.active]);
 
   // Handle Window Close
   useEffect(() => {
     const unlistenPromise = getCurrentWindow().onCloseRequested(async (event) => {
       event.preventDefault();
-      setShowExitConfirm(true);
+      if (await pill.leave()) setShowExitConfirm(true);
     });
     return () => {
       unlistenPromise.then((unlisten) => unlisten());
     };
-  }, []);
+  }, [pill.leave]);
 
 
   const handleConfirmExit = async () => {
@@ -198,6 +207,7 @@ function App() {
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       const focused = document.activeElement;
       if (focused instanceof HTMLElement && (focused.matches('input, textarea, select, button, [contenteditable="true"]') || focused.closest('[role="dialog"]'))) {
         return;
@@ -231,18 +241,32 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [togglePlay, seekForward, seekBackward, handleVolumeChange, volume]);
 
-  return (
-    <div className="flex flex-col h-screen w-screen bg-neutral-950 text-white font-sans overflow-hidden selection:bg-white/30">
+  const restoreFullPlayer = useCallback(async () => {
+    if (await pill.leave()) setShowPlayerPage(Boolean(currentSong));
+  }, [pill.leave, currentSong]);
+
+  return (<>
+    {pill.active && <PillPlayer song={currentSong} isPlaying={isPlaying} busy={pill.busy}
+      error={pill.error || error || ''} onRestore={restoreFullPlayer}
+      onTogglePlay={togglePlay} onPrevious={prevTrack} onNext={nextTrack}
+      onSeekBackward={seekBackward} onSeekForward={seekForward} />}
+    <div className="luma-app flex flex-col h-screen w-screen bg-neutral-950 text-white font-sans overflow-hidden selection:bg-white/30"
+      style={pill.active ? { display: 'none' } : undefined} inert={pill.active || undefined}>
       <Titlebar />
 
       {/* Full-Screen Player Page */}
-      {showPlayerPage && currentSong && (
+      {showPlayerPage && currentSong && !pill.active && (
         <PlayerPage
           currentSong={currentSong}
           currentTime={currentTime}
           isPlaying={isPlaying}
           isShuffle={isShuffle}
-          onClose={() => setShowPlayerPage(false)}
+          onClose={() => {
+            setShowPlayerPage(false);
+            requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('.luma-open-player')?.focus());
+          }}
+          onOpenPill={() => { void pill.enter(); }}
+          pillBusy={pill.busy}
           onPrevTrack={prevTrack}
           onNextTrack={nextTrack}
           onTogglePlay={togglePlay}
@@ -286,7 +310,7 @@ function App() {
       <div className="absolute top-[30%] right-[10%] w-[30%] h-[30%] bg-white/3 rounded-full blur-[80px] pointer-events-none"></div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden" inert={showPlayerPage && currentSong ? true : undefined}>
         {/* Sidebar */}
         <Sidebar currentView={currentView} onViewChange={setCurrentView} />
 
@@ -294,12 +318,8 @@ function App() {
         <main className="flex-1 flex flex-col min-w-0 relative">
           <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-sm -z-10"></div>
 
-          <div className="md:hidden p-2 border-b border-white/10">
-            <select aria-label="View" className="bg-neutral-900 p-2 rounded w-full" value={currentView} onChange={e => setCurrentView(e.target.value as View)}>
-              {['library', 'albums', 'genres', 'playlists', 'favorites', 'queue', 'analytics', 'settings'].map(view => <option key={view} value={view}>{view[0].toUpperCase() + view.slice(1)}</option>)}
-            </select>
-          </div>
-          {currentView === 'queue' && <div className="flex flex-col flex-1 min-h-0 pb-24"><h1 className="text-2xl font-bold p-4">Queue · {queue.length} tracks</h1><QueueEditor queue={queue} currentIndex={currentIndex} onPlayIndex={playIndex} onMove={moveQueue} onRemove={removeFromQueue} onSaved={loadPlaylists} /></div>}
+          <MobileNavigation currentView={currentView} onViewChange={setCurrentView} />
+          {currentView === 'queue' && <div className="flex flex-col flex-1 min-h-0"><GlassHeading as="h1" className="text-2xl font-bold p-4 shrink-0">Queue · {queue.length} tracks</GlassHeading><QueueEditor queue={queue} currentIndex={currentIndex} onPlayIndex={playIndex} onMove={moveQueue} onRemove={removeFromQueue} onSaved={loadPlaylists} /></div>}
           {currentView === "settings" && (
             <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hidden">
               <Settings
@@ -379,6 +399,7 @@ function App() {
       </div>
 
       {/* Player Bar */}
+      <div inert={showPlayerPage && currentSong ? true : undefined} className="luma-player-bar-shell">
       <PlayerBar
         currentSong={currentSong}
         currentTime={currentTime}
@@ -394,6 +415,8 @@ function App() {
         onVolumeChange={handleVolumeChange}
         isShuffle={isShuffle}
         onOpenPlayerPage={() => setShowPlayerPage(true)}
+        onOpenPill={() => { void pill.enter(); }}
+        pillBusy={pill.busy}
         loopMode={loopMode}
         onToggleLoop={toggleLoop}
         isFavorite={isFavorite}
@@ -413,8 +436,9 @@ function App() {
         }}
         onCancelSleepTimer={() => setSleepTimer(null)}
       />
+      </div>
 
-      {error && <div role="alert" className="fixed bottom-28 left-4 right-4 z-[4000] bg-neutral-900 border border-red-400/50 rounded-xl p-4 flex gap-3 items-center shadow-xl"><span className="flex-1 text-sm">{error}</span><GlassButton onClick={clearError}>Dismiss</GlassButton></div>}
+      {(error || pill.error) && <div className="fixed bottom-28 left-4 right-4 z-[4000]"><GlassAlert variant="error"><div className="flex gap-4 items-center"><span className="flex-1 text-sm">{pill.error || error}</span><GlassButton onClick={() => { clearError(); pill.clearError(); }}>Dismiss</GlassButton></div></GlassAlert></div>}
       {/* SongInfoModal */}
       {infoSong && (
         <SongInfoModal
@@ -450,7 +474,7 @@ function App() {
         </span>
       </GlassModal>
     </div>
-  );
+  </>);
 }
 
 export default App;

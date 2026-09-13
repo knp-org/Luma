@@ -32,71 +32,6 @@ body {
     min-height: 100vh;
 }
 
-/* Sound bar animations for playing indicator */
-@keyframes soundbar1 {
-
-    0%,
-    100% {
-        height: 30%;
-    }
-
-    50% {
-        height: 80%;
-    }
-}
-
-@keyframes soundbar2 {
-
-    0%,
-    100% {
-        height: 60%;
-    }
-
-    50% {
-        height: 30%;
-    }
-}
-
-@keyframes soundbar3 {
-
-    0%,
-    100% {
-        height: 40%;
-    }
-
-    50% {
-        height: 90%;
-    }
-}
-
-@keyframes soundbar4 {
-
-    0%,
-    100% {
-        height: 70%;
-    }
-
-    50% {
-        height: 40%;
-    }
-}
-
-.animate-soundbar1 {
-    animation: soundbar1 0.6s ease-in-out infinite;
-}
-
-.animate-soundbar2 {
-    animation: soundbar2 0.7s ease-in-out infinite;
-}
-
-.animate-soundbar3 {
-    animation: soundbar3 0.5s ease-in-out infinite;
-}
-
-.animate-soundbar4 {
-    animation: soundbar4 0.8s ease-in-out infinite;
-}
-
 /* Fade in animation */
 @keyframes fade-in {
     from {
@@ -213,9 +148,6 @@ body::-webkit-scrollbar,
     bottom: 0;
     transform: translateX(-50%);
     color: rgba(255, 255, 255, 0.6);
-    background: rgba(16, 16, 16, 0.85);
-    border-radius: 6px;
-    padding: 3px 8px;
     font-size: 11px;
     white-space: nowrap;
 }
@@ -230,3 +162,175 @@ body::-webkit-scrollbar,
     }
     [data-player-bar] > :last-child { display: none; }
 }
+
+/* Shared monochrome surfaces and controls. */
+.luma-app {
+    --text-secondary: #b8b8b8;
+    --text-muted: #ababab;
+    --glass-surface: rgba(255, 255, 255, 0.045);
+    --glass-surface-elevated: rgba(255, 255, 255, 0.075);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    color-scheme: dark;
+}
+.luma-app :is(button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid #ededed;
+    outline-offset: 3px;
+}
+.luma-app button:disabled { cursor: not-allowed; opacity: 0.45; }
+.luma-app .text-glow { text-shadow: none; }
+.luma-app .glass-card { box-shadow: var(--glass-shadow); }
+.luma-muted { color: #b8b8b8; }
+.luma-app .luma-icon-button { --ctl-dim: 44px; padding: 0; position: relative; }
+.luma-app .luma-play-button { --ctl-dim: 64px; }
+.luma-status-dot { position: absolute; right: 6px; top: 6px; width: 5px; height: 5px; border-radius: 50%; background: #fff; }
+.luma-sidebar { display: flex; flex-direction: column; gap: 28px; width: 216px; flex-shrink: 0; padding: 24px 16px; overflow-y: auto; background: rgba(255, 255, 255, 0.025); border-right: 1px solid var(--glass-border); z-index: 20; }
+.luma-brand { display: flex; align-items: center; gap: 12px; padding: 0 10px; font-size: 25px; font-weight: 650; letter-spacing: -0.7px; }
+.luma-sidebar nav { display: flex; flex-direction: column; gap: 6px; }
+.luma-app .luma-nav-item { display: flex; justify-content: flex-start; gap: 12px; width: 100%; min-height: 44px; padding: 10px 12px; text-align: left; }
+.luma-nav-item:last-child { margin-top: 12px; }
+.luma-mobile-nav { display: none; }
+.luma-library-header { flex-shrink: 0; position: relative; z-index: 10; padding: 20px 24px 16px; border-bottom: 1px solid var(--glass-border); background: rgba(18, 18, 18, 0.94); }
+.luma-library-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.luma-library-tools { display: flex; align-items: center; gap: 16px; }
+.luma-search { position: relative; flex: 1; min-width: 100px; }
+.luma-app .luma-search .glass-search-input { min-height: 44px; padding-right: 44px; }
+.luma-app .luma-search > button { position: absolute; right: 3px; top: 3px; --ctl-dim: 38px; padding: 0; }
+.luma-sort { flex-shrink: 0; min-width: 170px; }
+.luma-sort > div { flex-direction: row; align-items: center; }
+.luma-sort .glass-select { min-height: 44px; }
+.luma-album-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.luma-player-bar-shell { flex-shrink: 0; position: relative; z-index: 50; }
+.luma-player-bar[data-player-bar] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(310px, 1.3fr) minmax(160px, 0.7fr); gap: 24px; align-items: center; padding: 12px 24px; background: rgba(22, 22, 22, 0.98); border-top: 1px solid var(--glass-border); }
+.luma-now-playing { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.luma-app .luma-open-player { display: flex; justify-content: flex-start; gap: 12px; flex: 1; min-width: 0; padding: 0; text-align: left; }
+.luma-bar-center { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.luma-bar-volume { display: flex; justify-content: flex-end; }
+.luma-playback-controls { position: relative; flex-shrink: 0; max-width: 100%; padding: 6px 0; }
+.luma-transport { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.luma-secondary-controls { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.luma-volume { display: flex; align-items: center; gap: 4px; width: 154px; }
+.luma-volume .luma-slider { flex: 1; }
+.luma-playback-controls--compact { padding: 0; }
+.luma-playback-controls--compact .luma-transport { gap: 3px; }
+.luma-app .luma-playback-controls--compact .luma-transport .luma-icon-button { --ctl-dim: 38px; }
+.luma-app .luma-playback-controls--compact .luma-transport .luma-play-button { --ctl-dim: 48px; margin: 0 4px; }
+.luma-playback-controls--compact .luma-secondary-controls { position: absolute; bottom: calc(100% + 12px); right: 0; width: 280px; max-width: calc(100vw - 24px); padding: 12px; z-index: 100; }
+.luma-compact-volume { display: none; }
+.luma-sleep-popover.glass-card { position: absolute; width: min(280px, calc(100vw - 32px)); max-height: min(480px, 70vh); overflow-y: auto; bottom: 100%; left: 50%; transform: translateX(-50%); padding: 16px; z-index: 150; background: #242424; }
+.luma-playback-controls--compact .luma-sleep-popover { bottom: calc(100% + 12px); }
+.luma-seek { width: 100%; }
+.luma-seek-times { display: flex; justify-content: space-between; margin-top: -7px; padding: 0 3px; color: #b8b8b8; font-size: 11px; font-variant-numeric: tabular-nums; }
+.luma-slider { position: relative; min-width: 0; }
+.luma-app .glass-slider-container { height: 44px; }
+.luma-app .glass-slider-container:has(input:focus-visible) { outline: 2px solid var(--text-primary); outline-offset: 3px; border-radius: var(--radius-sm); }
+/* Keep the library checkbox in the keyboard and accessibility trees. */
+.luma-app .glass-checkbox-container { position: relative; min-height: 44px; }
+.luma-app .glass-checkbox-container input { display: block; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; margin: 0; opacity: 0; cursor: pointer; }
+.luma-app .glass-checkbox { flex-shrink: 0; }
+.luma-app .glass-checkbox-container input:focus-visible + .glass-checkbox { outline: 2px solid var(--text-primary); outline-offset: 3px; }
+.luma-slider-preview { position: absolute; bottom: calc(100% - 3px); transform: translateX(-50%); pointer-events: none; white-space: nowrap; z-index: 20; }
+.luma-app .luma-player-panel.glass-card { position: absolute; top: 12px; bottom: 12px; right: 12px; width: 340px; display: flex; flex-direction: column; min-height: 0; padding: 0; z-index: 40; overflow: hidden; }
+.luma-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border-bottom: 1px solid var(--glass-border); flex-shrink: 0; }
+.luma-panel-tabs { display: flex; gap: 4px; }
+.luma-panel-tabs button { min-height: 38px; }
+.luma-panel-body { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+.luma-panel-description { padding: 12px 16px 0; color: #bcbcbc; font-size: 12px; }
+.luma-lyrics-actions { padding: 8px 12px 0; }
+.luma-panel-backdrop { display: none; }
+@media (min-width: 1100px) {
+    .luma-player-layout[data-panel-open="true"] .luma-player-content { width: calc(100% - 368px); left: calc((100% - 368px) / 2); }
+}
+@media (max-width: 1099px) {
+    .luma-player-bar[data-player-bar] { grid-template-columns: minmax(0, 1fr) minmax(290px, 1fr); gap: 16px; }
+    .luma-bar-volume { display: none; }
+    .luma-compact-volume { display: block; width: 100%; }
+    .luma-compact-volume .luma-volume { width: 100%; }
+    .luma-app .luma-player-panel.glass-card { width: min(480px, calc(100% - 24px)); height: min(80%, 620px); top: auto; right: 50%; transform: translateX(50%); bottom: 12px; }
+    .luma-panel-backdrop { display: block; position: absolute; inset: 0; z-index: 35; background: #0009; border: 0; }
+}
+@media (max-width: 767px) {
+    .luma-mobile-nav { display: flex; align-items: center; justify-content: space-between; position: relative; flex-shrink: 0; z-index: 60; padding: 4px 12px; border-bottom: 1px solid var(--glass-border); background: #191919; }
+    .luma-app .luma-navigation-toggle { gap: 10px; min-height: 44px; padding: 6px 10px; }
+    .luma-mobile-brand { color: #aaa; font-size: 13px; font-weight: 600; letter-spacing: 1px; }
+    .luma-mobile-menu.glass-card { position: absolute; top: calc(100% + 4px); left: 12px; right: 12px; padding: 8px; }
+    .luma-mobile-nav nav { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .luma-mobile-nav .luma-nav-item:last-child { margin: 0; }
+    .luma-library-header { padding: 16px; }
+    .luma-library-tools { flex-wrap: wrap; gap: 10px; }
+    .luma-search { flex-basis: 100%; }
+    .luma-sort { justify-content: space-between; width: 100%; }
+    .luma-sort > div > :last-child { flex: 1; min-width: 0; }
+    .luma-album-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .luma-player-bar[data-player-bar] { grid-template-columns: minmax(0, 1fr); padding: 10px 16px; gap: 8px; }
+    .luma-player-bar .luma-bar-center { display: flex; }
+    .luma-now-playing .luma-open-player > div { width: 40px; height: 40px; }
+    .luma-playback-controls--compact .luma-secondary-controls { right: 50%; transform: translateX(50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .luma-app *, .luma-app *::before, .luma-app *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+.luma-app .luma-sleep-popover.glass-card,
+.luma-app .luma-sleep-popover.glass-card:hover { background: #242424; }
+.luma-icon-button svg [opacity] { opacity: 1; }
+.luma-icon-button svg, .luma-nav-item svg { filter: none !important; }
+
+.luma-album-hero h1 { font-size: clamp(26px, 4vw, 48px); line-height: 1.2; }
+@media (max-width: 767px) {
+    .luma-album-hero { flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+    .luma-album-hero > :first-child { width: min(56vw, 192px); height: min(56vw, 192px); }
+    .luma-album-hero > :last-child { width: 100%; }
+}
+
+/* Bound playlist columns even when a library contains only one playlist. */
+.luma-playlist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(0, 200px)); gap: 16px; align-items: start; align-content: start; flex-shrink: 0; }
+.luma-playlist-card.glass-card { width: 100%; max-width: 200px; min-width: 0; }
+.luma-settings-card:has(.glass-menu) { position: relative; z-index: 1; }
+.luma-playlist-cover { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); width: 100%; aspect-ratio: 1; overflow: hidden; }
+.luma-app .luma-queue-track { justify-content: flex-start; min-width: 0; }
+.luma-app .luma-secondary-controls.glass-card { margin: 0; }
+/* Opaque popovers use the library surface tokens so content stays readable. */
+.luma-mobile-menu, .luma-player-panel, .luma-track-menu, .luma-secondary-controls.glass-card { --glass-surface: #242424; --glass-surface-elevated: #242424; }
+@media (max-width: 479px) {
+    .luma-playlist-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+}
+@media (hover: none) {
+    .luma-playlist-delete { opacity: 1; }
+}
+
+/* Size the rule editor against its available space, including the sidebar. */
+.luma-smart-playlist-editor.glass-card { container-type: inline-size; max-width: 800px; margin-top: 12px; padding: 16px; }
+.luma-smart-playlist-editor:has(.glass-menu) { position: relative; z-index: 1; }
+.luma-smart-playlist-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 16px 12px; }
+.luma-smart-playlist-form > * { min-width: 0; }
+.luma-smart-playlist-wide { grid-column: span 2; }
+.luma-smart-playlist-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; padding-top: 4px; }
+.luma-smart-playlist-form .glass-input { min-height: 44px; }
+@container (min-width: 560px) {
+    .luma-smart-playlist-form { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+}
+
+.luma-queue-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 8px; overscroll-behavior: contain; }
+.luma-app .luma-queue-row.glass-card { --backdrop-blur: none; --glass-shadow: none; position: relative; display: flex; align-items: center; gap: 4px; height: 68px; padding: 6px 8px; margin-bottom: 6px; transition: background-color 150ms, border-color 150ms; }
+.luma-queue-row[data-current="true"] { --glass-surface: var(--glass-surface-active); }
+.luma-app .luma-queue-track { flex: 1; padding: 0 4px; text-align: left; align-self: stretch; }
+.luma-queue-actions { display: flex; flex-shrink: 0; }
+.luma-app .luma-queue-drag { touch-action: none; cursor: grab; flex-shrink: 0; }
+.luma-queue-list[data-dragging="true"] { user-select: none; cursor: grabbing; }
+.luma-app .luma-queue-list[data-dragging="true"] .luma-queue-row { transition: transform 150ms ease; }
+.luma-app .luma-queue-list .luma-queue-row[data-drag-active="true"] { transition: none; will-change: transform; z-index: 2; --glass-surface: #242424; border-color: var(--glass-border-bright); }
+.luma-app .luma-queue-list[data-dragging="true"] .luma-queue-drag { cursor: grabbing; }
+
+html[data-pill-mode="true"], html[data-pill-mode="true"] body { background: transparent; }
+.luma-pill-shell { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; padding: 8px; background: transparent; }
+.luma-app .luma-pill.glass-card { --glass-surface: rgba(24, 24, 24, 0.96); --glass-surface-elevated: rgba(24, 24, 24, 0.96); --glass-shadow: none; width: 100%; max-width: 404px; height: 64px; padding: 8px 10px; display: flex; align-items: center; gap: 6px; border-radius: var(--radius-pill); }
+.luma-pill-drag { display: flex; align-items: center; flex: 1; min-width: 0; gap: 8px; cursor: grab; user-select: none; touch-action: none; }
+.luma-pill-drag:active { cursor: grabbing; }
+.luma-pill-art { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; pointer-events: none; }
+.luma-pill-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-primary); }
+.luma-pill-controls { display: flex; align-items: center; flex-shrink: 0; }
+.luma-app .luma-pill .glass-btn-ghost { --ctl-dim: 28px; padding: 0; }
+.luma-app .luma-pill-play { --ctl-dim: 38px; padding: 0; margin: 0 2px; }

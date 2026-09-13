@@ -4,18 +4,12 @@ import { invoke } from '@tauri-apps/api/core';
 import { Song, LoopMode } from '../types';
 import { AlbumArt, useSongArt } from './AlbumArt';
 import { AudioVisualizer, readVisualizerPreference } from './AudioVisualizer';
-import { GlassSlider, GlassButton, GlassCard, GlassHeading, GlassText, GlassTextarea, GlassAlert, GlassEmptyState, GlassBadge } from '@knp-org/liquid-glass-ui';
+import { GlassButton, GlassCard, GlassHeading, GlassText, GlassTextarea, GlassAlert, GlassEmptyState, GlassBadge } from '@knp-org/liquid-glass-ui';
 import { parseLyrics, getCurrentLineIndex } from '../utils/lrcParser';
-import { SleepTimerMenu } from './SleepTimerMenu';
-import { IconFavorites, IconShuffle, IconSeekBackward, IconPrevTrack, IconPause, IconPlay, IconNextTrack, IconSeekForward, IconLoop, IconVolumeMute, IconVolumeLow, IconVolumeHigh, IconMusicNote, IconX, IconEdit, IconSpinner, IconDownload, IconArrowLeft, IconTimer, IconQueue } from '@knp-org/liquid-glass-ui';
-
-function VisualizerIcon() {
-    return (
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-            <path d="M3 8v4m3-7v10m4-13v16m4-12v8m3-5v2" />
-        </svg>
-    );
-}
+import { PlaybackControls } from './PlaybackControls';
+import { SeekSlider } from './PlayerSlider';
+import { PlayerPanel } from './PlayerPanel';
+import { IconFavorites, IconMusicNote, IconEdit, IconSpinner, IconDownload, IconArrowLeft, IconQueue, IconAnalytics, IconMinimize } from '@knp-org/liquid-glass-ui';
 
 interface PlayerPageProps {
     currentSong: Song;
@@ -23,6 +17,8 @@ interface PlayerPageProps {
     isPlaying: boolean;
     isShuffle: boolean;
     onClose: () => void;
+    onOpenPill: () => void;
+    pillBusy: boolean;
     onPrevTrack: () => void;
     onNextTrack: () => void;
     onTogglePlay: () => void;
@@ -58,6 +54,8 @@ export function PlayerPage({
     isPlaying,
     isShuffle,
     onClose,
+    onOpenPill,
+    pillBusy,
     isFavorite,
     onToggleFavorite,
     onPrevTrack,
@@ -85,21 +83,7 @@ export function PlayerPage({
     const currentPath = useRef(currentSong.path);
     currentPath.current = currentSong.path;
 
-    const [prevVolume, setPrevVolume] = useState(0.5);
-
-    const handleMuteToggle = () => {
-        if (volume > 0) {
-            setPrevVolume(volume);
-            onVolumeChange(0);
-        } else {
-            onVolumeChange(prevVolume > 0 ? prevVolume : 0.5);
-        }
-    };
-
-    // Panel visibility (hidden by default)
-    const [showQueue, setShowQueue] = useState(false);
-    const [showLyrics, setShowLyrics] = useState(false);
-    const [showSleepMenu, setShowSleepMenu] = useState(false);
+    const [panel, setPanel] = useState<'queue' | 'lyrics' | null>(null);
     const [showVisualizer, setShowVisualizer] = useState(readVisualizerPreference);
 
     useEffect(() => {
@@ -131,15 +115,13 @@ export function PlayerPage({
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
             if (e.key !== 'Escape') return;
-            if (isEditing) { setIsEditing(false); return; }
-            if (showSleepMenu) { setShowSleepMenu(false); return; }
-            if (showLyrics) { setShowLyrics(false); return; }
-            if (showQueue) { setShowQueue(false); return; }
+            if (isEditing && panel === 'lyrics') { setIsEditing(false); return; }
+            if (panel) { setPanel(null); return; }
             onClose();
         }
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [isEditing, showSleepMenu, showLyrics, showQueue, onClose]);
+    }, [isEditing, panel, onClose]);
 
     useEffect(() => {
         let active = true;
@@ -201,7 +183,7 @@ export function PlayerPage({
             const top = activeElement.offsetTop - container.clientHeight / 2 + activeElement.offsetHeight / 2;
             container.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
         }
-    }, [currentLineIndex, isEditing]);
+    }, [currentLineIndex, isEditing, panel]);
 
     async function saveLyrics() {
         setSaving(true);
@@ -216,7 +198,14 @@ export function PlayerPage({
     }
 
     return (
-        <div data-player-controls className="fixed inset-0 z-[2000] bg-neutral-950 flex flex-col animate-fade-in overflow-hidden">
+        <div data-player-controls data-player-page role="dialog" aria-label="Now playing" aria-modal="true"
+            onKeyDown={event => {
+                if (event.key !== 'Tab' || event.defaultPrevented) return;
+                const controls = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex="0"]')].filter(node => node.getClientRects().length);
+                const first = controls[0], last = controls[controls.length - 1];
+                if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+                else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+            }} className="fixed inset-0 z-[2000] bg-neutral-950 flex flex-col animate-fade-in overflow-hidden">
             {/* Background */}
             {artSrc && (
                 <div
@@ -229,30 +218,14 @@ export function PlayerPage({
             {/* Header */}
             <div className="relative z-50 flex items-center px-6 pt-10 pb-3 pr-[160px]">
                 <div data-tauri-drag-region className="absolute inset-0 z-0"></div>
-                <GlassButton variant="ghost" onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors relative z-10">
+                <GlassButton variant="ghost" onClick={onClose} aria-label="Back to library" autoFocus className="p-2 hover:bg-white/10 rounded-full transition-colors relative z-10">
                     <IconArrowLeft size={24} />
                 </GlassButton>
-                <div className="absolute left-1/2 -translate-x-1/2 text-sm text-white/50 font-medium z-10 pointer-events-none">Now Playing</div>
+                <div className="absolute left-1/2 -translate-x-1/2 text-sm text-white/65 font-medium z-10 pointer-events-none">Now Playing</div>
             </div>
 
             {/* Main Layout */}
-            <div className="flex-1 flex relative z-10 overflow-hidden items-center justify-center">
-                {/* Queue Side Drawer (Left) */}
-                <GlassCard className={`absolute left-2 top-2 bottom-2 z-30 !w-[min(22rem,88vw)] !h-auto !p-0 !rounded-2xl shadow-2xl transition-transform duration-300 ease-in-out overflow-hidden flex flex-col ${showQueue ? 'translate-x-0' : '-translate-x-[calc(100%+0.5rem)]'}`}>
-                    <div className="w-full h-full flex flex-col">
-                        <div className="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
-                            <div>
-                                <GlassHeading as="h2" className="text-lg font-semibold text-white">Queue</GlassHeading>
-                                <GlassText as="p" className="text-xs text-white/40">{queue.length} songs</GlassText>
-                            </div>
-                            <GlassButton variant="ghost" onClick={() => setShowQueue(false)} className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Hide queue">
-                                <IconX size={16} />
-                            </GlassButton>
-                        </div>
-                        <QueueEditor queue={queue} currentIndex={currentIndex} onPlayIndex={onPlayIndex} onMove={onMoveQueue} onRemove={onRemoveQueue} onSaved={onQueueSaved} />
-                    </div>
-                </GlassCard>
-
+            <div className="luma-player-layout flex-1 flex relative z-10 overflow-hidden items-center justify-center" data-panel-open={Boolean(panel)}>
                 {/* Player Content (Fixed Center — never shifts when drawers open) */}
                 <div className="luma-player-content absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-3xl flex flex-col items-center px-4 sm:px-8 z-10 overflow-y-auto overflow-x-hidden scrollbar-hidden py-3">
                     {/* Album Art Stack Carousel (Prev 3, Active, Next 3) */}
@@ -267,18 +240,20 @@ export function PlayerPage({
                             const zIndex = 10 - absOffset;
 
                             return (
-                                <div
+                                <GlassCard
                                     key={`prev-${index}`}
                                     onClick={() => onPlayIndex(index)}
+                                    role="button" tabIndex={0}
+                                    onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onPlayIndex(index); } }}
                                     style={{
                                         transform: `translateX(${translateX}%) scale(${scale})`,
                                         zIndex: zIndex,
                                     }}
-                                    className={`absolute w-[clamp(11rem,30vh,17rem)] h-[clamp(11rem,30vh,17rem)] rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-xl cursor-pointer transform-gpu will-change-transform transition-all duration-500 ease-out hover:opacity-100 hover:scale-105 hover:blur-none ${blur} ${opacity}`}
+                                    className={`!p-0 absolute w-[clamp(11rem,30vh,17rem)] h-[clamp(11rem,30vh,17rem)] rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-xl cursor-pointer transform-gpu will-change-transform transition-all duration-500 ease-out hover:opacity-100 hover:scale-105 hover:blur-none ${blur} ${opacity}`}
                                     title={`Previous: ${song.title || 'Track'}`}
                                 >
                                     <AlbumArt song={song} className="w-full h-full object-cover" />
-                                </div>
+                                </GlassCard>
                             );
                         })}
 
@@ -299,18 +274,20 @@ export function PlayerPage({
                             const zIndex = 10 - absOffset;
 
                             return (
-                                <div
+                                <GlassCard
                                     key={`next-${index}`}
                                     onClick={() => onPlayIndex(index)}
+                                    role="button" tabIndex={0}
+                                    onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onPlayIndex(index); } }}
                                     style={{
                                         transform: `translateX(${translateX}%) scale(${scale})`,
                                         zIndex: zIndex,
                                     }}
-                                    className={`absolute w-[clamp(11rem,30vh,17rem)] h-[clamp(11rem,30vh,17rem)] rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-xl cursor-pointer transform-gpu will-change-transform transition-all duration-500 ease-out hover:opacity-100 hover:scale-105 hover:blur-none ${blur} ${opacity}`}
+                                    className={`!p-0 absolute w-[clamp(11rem,30vh,17rem)] h-[clamp(11rem,30vh,17rem)] rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-xl cursor-pointer transform-gpu will-change-transform transition-all duration-500 ease-out hover:opacity-100 hover:scale-105 hover:blur-none ${blur} ${opacity}`}
                                     title={`Next: ${song.title || 'Track'}`}
                                 >
                                     <AlbumArt song={song} className="w-full h-full object-cover" />
-                                </div>
+                                </GlassCard>
                             );
                         })}
                     </div>
@@ -322,87 +299,45 @@ export function PlayerPage({
                             <GlassHeading as="h1" className="text-xl sm:text-2xl md:text-3xl font-bold text-white truncate max-w-[80%]">{currentSong.title || "Unknown Title"}</GlassHeading>
                             <GlassButton variant="ghost"
                                 onClick={onToggleFavorite}
-                                className={`p-2 transition-colors ${isFavorite ? 'text-red-500' : 'text-white/20 hover:text-white'}`}
+                                className={`p-2 transition-colors ${isFavorite ? 'text-red-500' : 'text-white/60 hover:text-white'}`}
                                 title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                                aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"} aria-pressed={isFavorite}
                             >
                                 <IconFavorites size={24} fill={isFavorite ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isFavorite ? "0" : "2"} />
                             </GlassButton>
                         </div>
                         <GlassText as="p" className="text-base sm:text-lg text-white/60 truncate">{currentSong.artist || "Unknown Artist"}</GlassText>
-                        <GlassText as="p" className="text-xs sm:text-sm text-white/40 truncate mt-1">{currentSong.album || "Unknown Album"}</GlassText>
+                        <GlassText as="p" className="text-xs sm:text-sm text-white/65 truncate mt-1">{currentSong.album || "Unknown Album"}</GlassText>
                     </div>
-                    <div className="w-full max-w-lg mb-3 flex-shrink-0">
-                        <div className="px-2">
-                            <GlassSlider
-                                min={0}
-                                max={currentSong.duration_seconds || 100}
-                                value={currentTime}
-                                shimmer={true}
-                                onChange={(e) => onSeek(Number(e.target.value))}
-                                className="w-full"
-                            />
-                        </div>
-                        <div className="flex justify-between mt-2 text-xs text-white/40 font-mono">
-                            <span>{Math.floor(currentTime / 60)}:{String(Math.floor(currentTime) % 60).padStart(2, '0')}</span>
-                            <span>{Math.floor(currentSong.duration_seconds / 60)}:{String(Math.floor(currentSong.duration_seconds) % 60).padStart(2, '0')}</span>
-                        </div>
+                    <div className="w-full max-w-lg flex-shrink-0">
+                        <SeekSlider key={currentSong.path} value={currentTime} duration={currentSong.duration_seconds} onSeek={onSeek} />
                     </div>
-                    <div className="w-full mb-2 flex-shrink-0 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
-                        <div className="flex items-center justify-end gap-1 sm:gap-2 md:gap-3 pr-1 sm:pr-2">
-                            <div className="relative">
-                                <GlassButton variant="ghost" onClick={() => setShowSleepMenu(!showSleepMenu)} className={`!w-10 !h-10 !p-0 !rounded-full relative ${sleepTimer?.active || showSleepMenu ? '!text-white !bg-white/15' : '!text-white/35'}`} title="Sleep Timer">
-                                    <IconTimer size={20} />
-                                    {sleepTimer?.active && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />}
-                                </GlassButton>
-                                {showSleepMenu && <SleepTimerMenu onClose={() => setShowSleepMenu(false)} onSetTimer={onSetSleepTimer} activeTimer={sleepTimer} onCancelTimer={onCancelSleepTimer} currentSongDuration={currentSong.duration_seconds} currentTime={currentTime} className="bottom-12 left-0" />}
-                            </div>
-                            <GlassButton variant="ghost" onClick={onToggleLoop} className={`!w-10 !h-10 !p-0 !rounded-full ${loopMode !== 'off' ? '!text-white !bg-white/15' : '!text-white/35'}`} title={loopMode === 'off' ? "Repeat Off" : loopMode === 'all' ? "Repeat All" : "Repeat Current Track"}>
-                                <IconLoop variant={loopMode} size={20} />
-                            </GlassButton>
-                            <GlassButton variant="ghost" onClick={onToggleShuffle} className={`!w-10 !h-10 !p-0 !rounded-full ${isShuffle ? '!text-white !bg-white/15' : '!text-white/35'}`} title={isShuffle ? "Shuffle On" : "Shuffle Off"}>
-                                <IconShuffle variant={isShuffle ? 'on' : 'off'} size={20} />
-                            </GlassButton>
-                            <GlassButton variant="ghost" onClick={onSeekBackward} className="!w-10 !h-10 !p-0 !rounded-full text-white/50 hover:text-white" title="Seek Backward 10s">
-                                <IconSeekBackward size={20} />
-                            </GlassButton>
-                            <GlassButton variant="ghost" onClick={onPrevTrack} className="!w-11 !h-11 !p-0 !rounded-full text-white/70 hover:text-white" title="Previous track">
-                                <IconPrevTrack size={26} />
-                            </GlassButton>
-                        </div>
-                        <div className="flex items-center justify-center">
-                            <GlassButton variant="primary" shape="circle" onClick={onTogglePlay} className="!w-16 !h-16 !p-0 hover:scale-105 active:scale-95 shadow-2xl shadow-white/20">
-                                {isPlaying ? <IconPause size={28} /> : <IconPlay size={28} />}
-                            </GlassButton>
-                        </div>
-                        <div className="flex items-center justify-start gap-1 sm:gap-2 md:gap-3 pl-1 sm:pl-2">
-                            <GlassButton variant="ghost" onClick={() => onNextTrack()} className="!w-11 !h-11 !p-0 !rounded-full text-white/70 hover:text-white" title="Next track">
-                                <IconNextTrack size={26} />
-                            </GlassButton>
-                            <GlassButton variant="ghost" onClick={onSeekForward} className="!w-10 !h-10 !p-0 !rounded-full text-white/50 hover:text-white" title="Seek Forward 10s">
-                                <IconSeekForward size={20} />
-                            </GlassButton>
-                            <div className="hidden md:flex items-center gap-1 ml-1" onWheel={(e) => onVolumeChange(Math.min(Math.max(volume + (e.deltaY > 0 ? -0.05 : 0.05), 0), 1))}>
-                                <GlassButton variant="ghost" onClick={handleMuteToggle} className="!w-10 !h-10 !p-0 !rounded-full text-white/50 hover:text-white">
-                                    {volume === 0 ? <IconVolumeMute size={20} /> : volume < 0.5 ? <IconVolumeLow size={20} /> : <IconVolumeHigh size={20} />}
-                                </GlassButton>
-                                <div className="w-20 lg:w-24"><GlassSlider min={0} max={1} step={0.01} value={volume} onChange={(e) => onVolumeChange(Number(e.target.value))} className="w-full" /></div>
-                            </div>
-                        </div>
-                    </div>
+                    <PlaybackControls isPlaying={isPlaying} isShuffle={isShuffle} loopMode={loopMode}
+                        onPrevTrack={onPrevTrack} onNextTrack={onNextTrack} onTogglePlay={onTogglePlay}
+                        onToggleShuffle={onToggleShuffle} onToggleLoop={onToggleLoop}
+                        onSeekForward={onSeekForward} onSeekBackward={onSeekBackward}
+                        volume={volume} onVolumeChange={onVolumeChange} sleepTimer={sleepTimer}
+                        onSetSleepTimer={onSetSleepTimer} onCancelSleepTimer={onCancelSleepTimer}
+                        duration={currentSong.duration_seconds} currentTime={currentTime} />
 
                     {/* Panel Toggle Buttons */}
                     <div className="flex items-center justify-center flex-wrap gap-3 mt-1 flex-shrink-0">
+                        <GlassButton type="button" variant="ghost" onClick={onOpenPill} disabled={pillBusy} aria-label="Open floating pill player" title="Floating pill player">
+                            <IconMinimize size={16} /> Pill mode
+                        </GlassButton>
                         <GlassButton variant="ghost"
-                            onClick={() => setShowQueue(!showQueue)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${showQueue ? 'bg-white/20 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'}`}
+                            onClick={() => setPanel(panel === 'queue' ? null : 'queue')}
+                            aria-expanded={panel === 'queue'}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${panel === 'queue' ? 'bg-white/20 text-white' : 'bg-white/5 text-white/65 hover:bg-white/10 hover:text-white'}`}
                             title="Toggle queue"
                         >
                             <IconQueue size={16} />
                             <span className="text-xs font-medium">Queue</span>
                         </GlassButton>
                         <GlassButton variant="ghost"
-                            onClick={() => setShowLyrics(!showLyrics)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${showLyrics ? 'bg-white/20 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'}`}
+                            onClick={() => setPanel(panel === 'lyrics' ? null : 'lyrics')}
+                            aria-expanded={panel === 'lyrics'}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${panel === 'lyrics' ? 'bg-white/20 text-white' : 'bg-white/5 text-white/65 hover:bg-white/10 hover:text-white'}`}
                             title="Toggle lyrics"
                         >
                             <IconMusicNote size={16} />
@@ -413,38 +348,31 @@ export function PlayerPage({
                             aria-pressed={showVisualizer}
                             aria-label="Toggle visualizer"
                             aria-controls={showVisualizer ? 'player-visualizer' : undefined}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${showVisualizer ? 'bg-white/20 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${showVisualizer ? 'bg-white/20 text-white' : 'bg-white/5 text-white/65 hover:bg-white/10 hover:text-white'}`}
                             title={showVisualizer ? 'Turn visualizer off' : 'Turn visualizer on'}
                         >
-                            <VisualizerIcon />
+                            <IconAnalytics size={16} />
                             <span className="text-xs font-medium">Visualizer</span>
                         </GlassButton>
                     </div>
                 </div>
 
-                {/* Lyrics Side Drawer (Right) */}
-                <GlassCard className={`absolute right-2 top-2 bottom-2 z-30 !w-[min(22rem,88vw)] !h-auto !p-0 !rounded-2xl shadow-2xl transition-transform duration-300 ease-in-out overflow-hidden flex flex-col ${showLyrics ? 'translate-x-0' : 'translate-x-[calc(100%+0.5rem)]'}`}>
-                    <div className="w-full h-full flex flex-col">
-                        <div className="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
-                            <GlassHeading as="h2" className="text-lg font-semibold text-white flex items-center gap-2">
-                                <IconMusicNote size={18} className="text-white/60" />
-                                Lyrics
-                            </GlassHeading>
-                            <div className="flex items-center gap-1">
-                                {!currentSong.lyrics && (
-                                    <GlassButton variant="ghost" onClick={() => { setEditText(userLyrics || ''); setIsEditing(!isEditing); }} className={`p-1.5 rounded-lg transition-colors ${isEditing ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white hover:bg-white/10'}`} title={isEditing ? "Stop editing" : "Edit lyrics"}>
-                                        <IconEdit size={16} />
-                                    </GlassButton>
-                                )}
-                                <GlassButton variant="ghost" onClick={() => { setIsEditing(false); setShowLyrics(false); }} className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Close lyrics">
-                                    <IconX size={16} />
-                                </GlassButton>
-                            </div>
-                        </div>
+                {panel && <PlayerPanel tab={panel} onTabChange={setPanel} onClose={() => { setIsEditing(false); setPanel(null); }}>
+                    {panel === 'queue' ? <>
+                        <p className="luma-panel-description">{queue.length} {queue.length === 1 ? 'track' : 'tracks'} in your queue</p>
+                        <QueueEditor queue={queue} currentIndex={currentIndex} onPlayIndex={onPlayIndex} onMove={onMoveQueue} onRemove={onRemoveQueue} onSaved={onQueueSaved} />
+                    </> : <>
+                        {!currentSong.lyrics && <div className="luma-lyrics-actions">
+                            <GlassButton variant="ghost" onClick={() => { setEditText(userLyrics || ''); setIsEditing(!isEditing); }}
+                                aria-label={isEditing ? 'Cancel lyrics editing' : 'Edit lyrics'} aria-pressed={isEditing}>
+                                <IconEdit size={16} /> {isEditing ? 'Cancel editing' : 'Edit lyrics'}
+                            </GlassButton>
+                        </div>}
                         <div ref={lyricsContainerRef} className="relative flex-1 overflow-y-auto scrollbar-hidden p-4 flex flex-col">
                             {isEditing ? (
                                 <>
                                     <GlassTextarea
+                                        aria-label="Lyrics text"
                                         value={editText}
                                         onChange={(e) => setEditText(e.target.value)}
                                         placeholder="Paste or type lyrics here... (LRC format supported: [mm:ss.xx]text)"
@@ -457,7 +385,7 @@ export function PlayerPage({
                                 parsedLyrics.isSynced ? (
                                     <div className="flex flex-col gap-3 py-8">
                                         {parsedLyrics.lines.map((line, idx) => (
-                                            <div key={idx} data-line-index={idx} onClick={() => { if (line.time >= 0) onSeek(line.time); }} className={`px-3 py-2 rounded-lg transition-all duration-300 cursor-pointer ${idx === currentLineIndex ? 'text-white text-lg font-semibold bg-white/10 scale-105 shadow-lg' : idx < currentLineIndex ? 'text-white/40 text-sm' : 'text-white/60 text-sm hover:text-white/80 hover:bg-white/5'}`}>{line.text}</div>
+                                            <GlassButton variant="ghost" type="button" key={idx} data-line-index={idx} onClick={() => { if (line.time >= 0) onSeek(line.time); }} className={`text-left px-3 py-2 rounded-lg transition-all duration-300 cursor-pointer ${idx === currentLineIndex ? 'text-white text-lg font-semibold bg-white/10 scale-105 shadow-lg' : idx < currentLineIndex ? 'text-white/65 text-sm' : 'text-white/60 text-sm hover:text-white/80 hover:bg-white/5'}`}>{line.text}</GlassButton>
                                         ))}
                                     </div>
                                 ) : (
@@ -517,8 +445,8 @@ export function PlayerPage({
                                 </div>
                             )}
                         </div>
-                    </div>
-                </GlassCard>
+                    </>}
+                </PlayerPanel>}
             </div>
 
             {/* Footer Info */}

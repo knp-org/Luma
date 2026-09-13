@@ -202,25 +202,27 @@ export function Analytics({ songs, onPlaySong }: AnalyticsProps) {
     const maxDecadeTracks = Math.max(0, ...decades.map(d => d.tracks));
 
     const songRow = (song: SongWithCount, i: number) => (
-        <div
+        <GlassCard
             key={song.path}
-            className="flex items-center gap-4 p-3 hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+            className="flex items-center gap-4 !p-3 hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+            role="button" tabIndex={0}
+            onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onPlaySong(song); } }}
             onClick={() => onPlaySong(song)}
         >
             <div className="text-2xl font-bold text-white/10 w-8 tabular-nums">{i + 1}</div>
             <AlbumArt song={song} className="w-12 h-12 rounded-lg" />
             <div className="flex-1 min-w-0">
                 <div className="font-medium text-white truncate">{song.title || song.path.split('/').pop()}</div>
-                <div className="text-sm text-white/40 truncate">{song.artist || UNKNOWN}</div>
+                <div className="text-sm text-white/65 truncate">{song.artist || UNKNOWN}</div>
             </div>
             <GlassBadge>{song.playCount} plays</GlassBadge>
-        </div>
+        </GlassCard>
     );
 
     return (
         <div className="p-8 h-full overflow-y-auto pb-32">
             <GlassHeading as="h1" className="text-3xl font-bold text-white mb-1">Analytics</GlassHeading>
-            <GlassText as="p" className="text-sm text-white/40 mb-8">
+            <GlassText as="p" className="text-sm text-white/65 mb-8">
                 Computed locally from your library — nothing leaves this machine.
             </GlassText>
 
@@ -305,7 +307,7 @@ export function Analytics({ songs, onPlaySong }: AnalyticsProps) {
                         </Section>
 
                         <Section title="Library Composition">
-                            <GlassText as="p" className="text-xs text-white/40 mb-1">Audio quality</GlassText>
+                            <GlassText as="p" className="text-xs text-white/65 mb-1">Audio quality</GlassText>
                             {quality.rows.map(row => (
                                 <GlassMeter
                                     key={row.label}
@@ -319,7 +321,7 @@ export function Analytics({ songs, onPlaySong }: AnalyticsProps) {
 
                             <GlassDivider className="my-4" />
 
-                            <GlassText as="p" className="text-xs text-white/40 mb-1">By decade</GlassText>
+                            <GlassText as="p" className="text-xs text-white/65 mb-1">By decade</GlassText>
                             {decades.map(({ decade, tracks }) => (
                                 <GlassMeter
                                     key={decade}
@@ -330,7 +332,7 @@ export function Analytics({ songs, onPlaySong }: AnalyticsProps) {
                                 />
                             ))}
                             {decades.length === 0 && (
-                                <GlassText as="p" className="text-xs text-white/30 py-2">No year metadata found</GlassText>
+                                <GlassText as="p" className="text-xs text-white/60 py-2">No year metadata found</GlassText>
                             )}
                         </Section>
                     </div>

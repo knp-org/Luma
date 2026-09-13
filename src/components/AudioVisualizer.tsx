@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { GlassBadge } from '@knp-org/liquid-glass-ui';
 import { invoke } from '@tauri-apps/api/core';
 
 const BANDS = 48;
@@ -223,7 +224,7 @@ export function AudioVisualizer({ isPlaying, volume, trackKey }: AudioVisualizer
     return (
         <div id="player-visualizer" className="luma-visualizer">
             <canvas ref={canvasRef} aria-hidden="true" />
-            {unavailable && <span className="luma-visualizer-status" role="status">Audio visualization unavailable</span>}
+            {unavailable && <span className="luma-visualizer-status" role="status"><GlassBadge>Audio visualization unavailable</GlassBadge></span>}
         </div>
     );
 }

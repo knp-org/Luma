@@ -71,7 +71,7 @@ export function Genres({ songs, onPlaySong }: GenresProps) {
                 <GlassButton
                     variant="ghost"
                     onClick={handleBack}
-                    className="self-start text-sm text-white/50 hover:text-white mb-6 flex items-center gap-2 group transition-all"
+                    className="self-start text-sm text-white/65 hover:text-white mb-6 flex items-center gap-2 group transition-all"
                 >
                     <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Genres
                 </GlassButton>
@@ -102,26 +102,28 @@ export function Genres({ songs, onPlaySong }: GenresProps) {
                 <div className="flex-1 overflow-y-auto scrollbar-hidden">
                     <div className="grid grid-cols-1 gap-1">
                         {selectedGenre.songs.sort((a, b) => (a.title || "").localeCompare(b.title || "")).map((song, idx) => (
-                            <div
+                            <GlassCard
                                 key={idx}
+                                role="button" tabIndex={0}
+                                onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); } }}
                                 onClick={() => onPlaySong(song, selectedGenre.songs)}
-                                className="flex items-center gap-4 p-3 text-white/80 hover:bg-white/5 rounded-xl cursor-pointer transition-all border border-transparent hover:border-white/5 group"
+                                className="flex items-center gap-4 !p-3 text-white/80 hover:bg-white/5 rounded-xl cursor-pointer transition-all border border-transparent hover:border-white/5 group"
                             >
-                                <div className="text-white/20 w-8 text-right font-mono text-sm group-hover:text-white/40 transition-colors">
+                                <div className="text-white/60 w-8 text-right font-mono text-sm group-hover:text-white/65 transition-colors">
                                     {(idx + 1).toString().padStart(2, '0')}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-medium text-white group-hover:text-white transition-colors truncate">
                                         {song.title || song.path.split('/').pop()}
                                     </div>
-                                    <div className="text-xs text-white/40 group-hover:text-white/60 transition-colors truncate">
+                                    <div className="text-xs text-white/65 group-hover:text-white/60 transition-colors truncate">
                                         {song.artist} • {song.album}
                                     </div>
                                 </div>
-                                <div className="text-xs font-mono text-white/20 group-hover:text-white/40 transition-colors">
+                                <div className="text-xs font-mono text-white/60 group-hover:text-white/65 transition-colors">
                                     {Math.floor(song.duration_seconds / 60)}:{String(Math.floor(song.duration_seconds) % 60).padStart(2, '0')}
                                 </div>
-                            </div>
+                            </GlassCard>
                         ))}
                     </div>
                 </div>
@@ -138,10 +140,12 @@ export function Genres({ songs, onPlaySong }: GenresProps) {
 
             <div className="grid grid-cols-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 overflow-y-auto scrollbar-hidden pb-32">
                 {genres.slice(0, visibleCount).map((genre, idx) => (
-                    <div
+                    <GlassCard
                         key={idx}
+                        role="button" tabIndex={0} aria-label={`Open genre ${genre.name}`}
+                        onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedGenre(genre); } }}
                         onClick={() => setSelectedGenre(genre)}
-                        className="group flex flex-col cursor-pointer min-w-0"
+                        className="group flex flex-col cursor-pointer min-w-0 !p-3"
                     >
                         <GlassCard width="100%" className="!p-0 aspect-square rounded-2xl mb-4 overflow-hidden border border-white/5 shadow-lg group-hover:shadow-2xl group-hover:shadow-black/50 transition-all group-hover:-translate-y-1 relative ring-1 ring-white/5 group-hover:ring-white/20">
                             {/* Unsplash image or generate pattern for genre? 
@@ -156,10 +160,10 @@ export function Genres({ songs, onPlaySong }: GenresProps) {
                         <GlassHeading as="h3" className="font-semibold text-white/90 truncate text-sm px-1 group-hover:text-white transition-colors">
                             {genre.name}
                         </GlassHeading>
-                        <GlassText as="p" className="text-[11px] text-white/40 truncate px-1 group-hover:text-white/60 transition-colors">
+                        <GlassText as="p" className="text-[11px] text-white/65 truncate px-1 group-hover:text-white/60 transition-colors">
                             {genre.songs.length} Songs
                         </GlassText>
-                    </div>
+                    </GlassCard>
                 ))}
                 {visibleCount < genres.length && (
                     <div ref={loadMoreRef} className="col-span-full h-20 flex items-center justify-center">

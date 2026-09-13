@@ -46,19 +46,19 @@ export function Titlebar() {
             >
                 <GlassButton
                     variant="ghost"
-                    className="w-[46px] h-full flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+                    className="w-[46px] h-full flex items-center justify-center text-white/65 hover:bg-white/10 hover:text-white transition-colors"
                     onClick={() => appWindow.minimize().catch(() => {})}
-                    title="Minimize"
+                    title="Minimize" aria-label="Minimize window"
                 >
                     <IconTitlebarMinimize />
                 </GlassButton>
                 <GlassButton
                     variant="ghost"
-                    className="w-[46px] h-full flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+                    className="w-[46px] h-full flex items-center justify-center text-white/65 hover:bg-white/10 hover:text-white transition-colors"
                     onClick={() => {
                         appWindow.toggleMaximize().then(() => appWindow.isMaximized()).then(setIsMaximized).catch(() => {});
                     }}
-                    title={isMaximized ? "Restore" : "Maximize"}
+                    title={isMaximized ? "Restore" : "Maximize"} aria-label={isMaximized ? "Restore window" : "Maximize window"}
                 >
                     {isMaximized ? (
                         <IconTitlebarMaximize />
@@ -68,9 +68,9 @@ export function Titlebar() {
                 </GlassButton>
                 <GlassButton
                     variant="ghost"
-                    className="w-[46px] h-full flex items-center justify-center text-white/50 hover:bg-red-500 hover:text-white transition-colors"
+                    className="w-[46px] h-full flex items-center justify-center text-white/65 hover:bg-red-500 hover:text-white transition-colors"
                     onClick={() => appWindow.close().catch(() => {})}
-                    title="Close"
+                    title="Close" aria-label="Close window"
                 >
                     <IconTitlebarClose />
                 </GlassButton>

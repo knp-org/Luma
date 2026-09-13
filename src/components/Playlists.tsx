@@ -81,7 +81,7 @@ export function Playlists({ songs, playlists, onRefresh, onPlayPlaylist }: Playl
     };
 
     return (
-        <div className="p-6 h-full flex flex-col">
+        <div className="p-6 min-h-full flex flex-col">
             <div className="mb-8">
                 <GlassHeading as="h1" className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">Your Playlists</GlassHeading>
                 <div className="mt-2">
@@ -93,7 +93,7 @@ export function Playlists({ songs, playlists, onRefresh, onPlayPlaylist }: Playl
                 <div className="flex-1 flex flex-col animate-fade-in pb-20">
                     <GlassButton variant="ghost"
                         onClick={() => setSelectedPlaylist(null)}
-                        className="self-start text-sm text-white/50 hover:text-white mb-4 flex items-center gap-2 group transition-all"
+                        className="self-start text-sm text-white/65 hover:text-white mb-4 flex items-center gap-2 group transition-all"
                     >
                         <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Playlists
                     </GlassButton>
@@ -120,7 +120,7 @@ export function Playlists({ songs, playlists, onRefresh, onPlayPlaylist }: Playl
 
                                 if (displaySongs.length >= 4) {
                                     return (
-                                        <div className="w-full h-full grid grid-cols-2 grid-rows-2">
+                                        <div className="luma-playlist-cover h-full">
                                             {displaySongs.map((s, i) => (
                                                 <div key={i} className="overflow-hidden">
                                                     <AlbumArt song={s} className="w-full h-full object-cover" />
@@ -189,18 +189,20 @@ export function Playlists({ songs, playlists, onRefresh, onPlayPlaylist }: Playl
                                 };
 
                                 return (
-                                    <div
+                                    <GlassCard
                                         key={idx}
+                                        tabIndex={0} aria-label={`Play ${displaySong.title}`}
+                                        onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); handlePlayContext(selectedPlaylist, idx, false); } }}
                                         onClick={() => handlePlayContext(selectedPlaylist, idx, false)}
-                                        className="flex items-center gap-4 p-3 text-white/80 hover:bg-white/5 rounded-lg cursor-pointer transition-colors border-b border-white/5 last:border-0 hover:border-transparent group"
+                                        className="flex items-center gap-4 !p-3 text-white/80 hover:bg-white/5 rounded-lg cursor-pointer transition-colors border-b border-white/5 last:border-0 hover:border-transparent group"
                                     >
-                                        <div className="text-white/30 w-6 text-right font-mono text-xs">{idx + 1}</div>
+                                        <div className="text-white/60 w-6 text-right font-mono text-xs">{idx + 1}</div>
                                         <div className="w-10 h-10 rounded overflow-hidden bg-white/5 flex-shrink-0">
                                             <AlbumArt song={displaySong} className="w-full h-full object-cover" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-medium text-white group-hover:text-white transition-colors truncate">{displaySong.title}</div>
-                                            <div className="text-xs text-white/40 truncate">{displaySong.artist}</div>
+                                            <div className="text-xs text-white/65 truncate">{displaySong.artist}</div>
                                         </div>
 
                                         {/* Remove Button */}
@@ -218,12 +220,12 @@ export function Playlists({ songs, playlists, onRefresh, onPlayPlaylist }: Playl
                                                     console.error("Failed to remove track:", err);
                                                 }
                                             }}
-                                            className="p-2 text-white/20 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                            className="p-2 text-white/60 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                                             title="Remove from playlist"
                                         >
                                             <IconTrash size={18} />
                                         </GlassButton>
-                                    </div>
+                                    </GlassCard>
                                 );
                             })
                         )}
@@ -233,12 +235,12 @@ export function Playlists({ songs, playlists, onRefresh, onPlayPlaylist }: Playl
                 <>
                     <SmartPlaylists songs={songs} onPlay={tracks => onPlayPlaylist(tracks)} />
                     {/* Create New */}
-                    <form onSubmit={createPlaylist} className="mb-8 flex gap-2">
+                    <form onSubmit={createPlaylist} className="mb-8 flex flex-wrap gap-2">
                         <GlassInput
                             value={newPlaylistName}
                             onChange={(e) => setNewPlaylistName(e.target.value)}
                             placeholder="New Playlist Name..."
-                            className="w-64"
+                            containerClassName="w-64 max-w-full"
                         />
                         <GlassButton
                             type="submit"
@@ -249,7 +251,7 @@ export function Playlists({ songs, playlists, onRefresh, onPlayPlaylist }: Playl
                     </form>
 
                     {/* Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                    <div className="luma-playlist-grid">
                         {playlists.map((pl, idx) => (
                             <PlaylistCard
                                 key={idx}
@@ -278,11 +280,13 @@ function PlaylistCard({ playlist, songs, onSelect }: { playlist: Playlist, songs
 
     return (
         <GlassCard
+            tabIndex={0} aria-label={`Open playlist ${playlist.name}`}
+            onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onSelect(); } }}
             onClick={onSelect}
-            className="group w-full cursor-pointer !p-3 flex flex-col hover:-translate-y-1 hover:border-white/20"
+            className="luma-playlist-card group relative cursor-pointer !p-3 flex flex-col hover:-translate-y-1 hover:border-white/20"
         >
             <div className="flex justify-between items-start mb-3 overflow-hidden rounded-lg relative shadow-inner group-hover:shadow-none transition-all">
-                <div className="w-full aspect-square bg-neutral-900 grid grid-cols-2 grid-rows-2 relative">
+                <div className="luma-playlist-cover bg-neutral-900 relative">
                     {collage.length >= 4 ? (
                         collage.map((s, i) => (
                             <div key={i} className="overflow-hidden">
@@ -294,19 +298,19 @@ function PlaylistCard({ playlist, songs, onSelect }: { playlist: Playlist, songs
                             <AlbumArt song={collage[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                         </div>
                     ) : (
-                        <div className="col-span-2 row-span-2 flex items-center justify-center text-4xl text-white/20">
-                            🎵
+                        <div className="col-span-2 row-span-2 flex items-center justify-center text-4xl text-white/60">
+                            <IconMusicNote size={36} />
                         </div>
                     )}
                 </div>
             </div>
 
             <div className="flex justify-between items-center">
-                <div className="flex-1 min-w-0 pr-2">
+                <div className="flex-1 min-w-0">
                     <GlassHeading as="h3" className="font-medium text-white/90 truncate text-sm px-1">{playlist.name}</GlassHeading>
-                    <GlassText as="p" className="text-[10px] text-white/40 font-mono px-1">{playlist.tracks.length} tracks</GlassText>
+                    <GlassText as="p" className="text-[10px] text-white/65 font-mono px-1 whitespace-nowrap">{playlist.tracks.length} tracks</GlassText>
                 </div>
-                <GlassButton variant="ghost"
+                <GlassButton variant="secondary" shape="circle" size="sm"
                     onClick={async (e) => {
                         e.stopPropagation();
                         // Confirm?
@@ -316,7 +320,8 @@ function PlaylistCard({ playlist, songs, onSelect }: { playlist: Playlist, songs
                             window.dispatchEvent(customEvent);
                         }
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded transition-all"
+                    className="luma-playlist-delete absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                    aria-label={`Delete playlist ${playlist.name}`}
                     title="Delete Playlist"
                 >
                     <IconTrash size={14} />

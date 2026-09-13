@@ -5,14 +5,6 @@ import { Library } from '../src/components/Library';
 import type { Song } from '../src/models';
 const artRender = vi.hoisted(() => vi.fn());
 vi.mock('../src/components/AlbumArt', () => ({ AlbumArt: ({ song }: { song: Song }) => { artRender(song.path); return null; } }));
-vi.mock('@knp-org/liquid-glass-ui', () => {
-    const Box = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
-    const Icon = () => null;
-    return { GlassButton: ({ children, onClick }: { children?: React.ReactNode; onClick?: React.MouseEventHandler }) => <button onClick={onClick}>{children}</button>,
-        GlassSearch: ({ value, onChange }: { value: string; onChange: React.ChangeEventHandler<HTMLInputElement> }) => <input aria-label="Search" value={value} onChange={onChange} />,
-        GlassHeading: Box, GlassText: Box, GlassEmptyState: Box, GlassBadge: Box, GlassSkeleton: Box,
-        IconPlaySolid: Icon, IconMoreVertical: Icon, IconCheck: Icon, IconPause: Icon, IconInfo: Icon, IconPlus: Icon, IconMusicNote: Icon };
-});
 vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const songs: Song[] = Array.from({ length: 5000 }, (_, i) => ({ path: `/music/${i}`, title: `Track ${i}`, duration_seconds: 60, file_size_bytes: 1, has_album_art: false }));

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { Song, Playlist } from '../types';
+import { sortLibrary, type LibrarySort } from '../utils/librarySort';
 import { AlbumArt } from './AlbumArt';
-import { GlassButton, GlassHeading, GlassText, GlassSearch, GlassEmptyState, GlassBadge, GlassSkeleton } from '@knp-org/liquid-glass-ui';
-import { IconPlaySolid, IconMoreVertical, IconCheck, IconPause, IconInfo, IconPlus, IconMusicNote } from '@knp-org/liquid-glass-ui';
+import { GlassButton, GlassHeading, GlassText, GlassEmptyState, GlassBadge, GlassSkeleton, GlassSearch, GlassSelect, GlassCard, GlassCheckbox, IconX } from '@knp-org/liquid-glass-ui';
+import { IconPlaySolid, IconMoreVertical, IconPause, IconInfo, IconPlus, IconMusicNote, IconAnalytics } from '@knp-org/liquid-glass-ui';
 
 interface LibraryProps {
     songs: Song[];
@@ -43,12 +44,15 @@ export function Library({
     const [viewportHeight, setViewportHeight] = useState(640);
     const [focusedPath, setFocusedPath] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [sort, setSort] = useState<LibrarySort>('default');
+    const searchInput = useRef<HTMLInputElement>(null);
+    const sortedSongs = useMemo(() => sortLibrary(songs, sort), [songs, sort]);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const filteredSongs = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
-        return songs.filter(song => !query || [song.title, song.artist, song.album, song.path].some(value => value?.toLowerCase().includes(query)));
-    }, [songs, searchQuery]);
+        return sortedSongs.filter(song => !query || [song.title, song.artist, song.album, song.path].some(value => value?.toLowerCase().includes(query)));
+    }, [sortedSongs, searchQuery]);
 
     const latest = useRef({ onPlaySong, onQueue, onMenuToggle, onAddToPlaylist, onShowSongInfo, filteredSongs, menuOpenFor });
     latest.current = { onPlaySong, onQueue, onMenuToggle, onAddToPlaylist, onShowSongInfo, filteredSongs, menuOpenFor };
@@ -63,7 +67,7 @@ export function Library({
     useEffect(() => {
         if (scrollRef.current) scrollRef.current.scrollTop = 0;
         setScrollTop(0);
-    }, [songs.length, searchQuery, title]);
+    }, [songs.length, searchQuery, title, sort]);
     useEffect(() => {
         const node = scrollRef.current;
         if (!node) return;
@@ -85,23 +89,21 @@ export function Library({
 
     return (
         <>
-            <div className="p-6 border-b border-white/5">
-                <div className="flex items-center justify-between gap-4">
-                    <div>
-                        <GlassHeading as="h1" className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">{title}</GlassHeading>
-                        <div className="mt-2">
-                            <GlassBadge>{songs.length} songs</GlassBadge>
-                        </div>
+            <header className="luma-library-header">
+                <div className="luma-library-title"><GlassHeading as="h1" className="text-2xl font-bold text-white">{title}</GlassHeading>
+                    <GlassBadge>{searchQuery ? `${filteredSongs.length} of ${songs.length}` : songs.length} songs</GlassBadge>
+                </div>
+                <div className="luma-library-tools">
+                    <div className="luma-search">
+                        <GlassSearch ref={searchInput} aria-label="Search" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Search songs, artists, albums…" />
+                        {searchQuery && <GlassButton variant="ghost" shape="circle" type="button" aria-label="Clear search" title="Clear search" onClick={() => { setSearchQuery(''); searchInput.current?.focus(); }}><IconX size={16} /></GlassButton>}
                     </div>
-                    <div className="flex-1 max-w-md">
-                        <GlassSearch
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search songs, artists, albums..."
-                        />
+                    <div className="luma-sort" role="group" aria-label="Sort songs">
+                        <GlassSelect label="Sort by" value={sort} onChange={value => setSort(value as LibrarySort)}
+                            options={[{value:'default', label:'Library order'}, {value:'title', label:'Title A–Z'}, {value:'artist', label:'Artist A–Z'}, {value:'album', label:'Album'}, {value:'recent', label:'Recently added'}]} />
                     </div>
                 </div>
-            </div>
+            </header>
 
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 scrollbar-hidden"
                 onScroll={event => setScrollTop(event.currentTarget.scrollTop)}
@@ -114,7 +116,7 @@ export function Library({
                         <GlassSkeleton height="48px" />
                     </div>
                 ) : songs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-64 text-white/40 gap-4">
+                    <div className="flex flex-col items-center justify-center h-64 text-white/65 gap-4">
                         <GlassEmptyState
                             icon={<IconMusicNote size={48} />}
                             title="No Songs"
@@ -140,7 +142,7 @@ export function Library({
                                 </div>
                             );
                         })}
-                        {filteredSongs.length === 0 && <p className="p-6 text-white/50">No matching songs</p>}
+                        {filteredSongs.length === 0 && <p className="p-6 text-white/65">No matching songs</p>}
                     </div>
                 )}
             </div>
@@ -180,10 +182,12 @@ const SongRow = memo(({
     }, [menuOpen]);
 
     return (
-        <div
+        <GlassCard
             onClick={() => onPlay(song)}
+            tabIndex={0} aria-label={`Play ${song.title || song.path.split('/').pop()}`}
+            onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onPlay(song); } }}
             style={{ height: 66, boxSizing: 'border-box' }}
-            className={`group flex items-center p-2 rounded-lg transition-all cursor-pointer border border-transparent relative
+            className={`group flex items-center !p-2 rounded-lg transition-all cursor-pointer border border-transparent relative
         ${isCurrent
                     ? "bg-white/10 border-white/10 shadow-lg backdrop-blur-sm"
                     : "hover:bg-white/5 hover:border-white/5"
@@ -195,7 +199,7 @@ const SongRow = memo(({
 
                 {/* Play overlay on hover (only when not current) */}
                 {!isCurrent && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-70 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity z-10">
                             <IconPlaySolid size={20} fill="white" />
                     </div>
                 )}
@@ -204,13 +208,7 @@ const SongRow = memo(({
                 {isCurrent && (
                     <div className="absolute inset-0 bg-black/70 flex items-center justify-center gap-0.5">
                         {isPlaying ? (
-                            // Animated sound bars
-                            <>
-                                <div className="w-1 bg-white rounded-full animate-soundbar1" style={{ height: '60%' }}></div>
-                                <div className="w-1 bg-white rounded-full animate-soundbar2" style={{ height: '80%' }}></div>
-                                <div className="w-1 bg-white rounded-full animate-soundbar3" style={{ height: '50%' }}></div>
-                                <div className="w-1 bg-white rounded-full animate-soundbar4" style={{ height: '70%' }}></div>
-                            </>
+                            <IconAnalytics size={20} aria-label="Playing" />
                         ) : (
                             // Paused icon
                             <IconPause size={20} fill="white" />
@@ -223,11 +221,11 @@ const SongRow = memo(({
                 <GlassHeading as="h4" className={`font-medium truncate text-sm ${isCurrent ? "text-white" : "text-white/80"}`}>
                     {song.title || song.path.split('/').pop()}
                 </GlassHeading>
-                <GlassText as="p" className="text-xs text-white/40 truncate group-hover:text-white/60 transition-colors">
+                <GlassText as="p" className="text-xs text-white/65 truncate group-hover:text-white/60 transition-colors">
                     {song.artist || "Unknown Artist"} • {song.album || "Unknown Album"}
                 </GlassText>
             </div>
-            <div className="text-xs font-mono text-white/20 pl-4 group-hover:text-white/50 w-12 text-right">
+            <div className="text-xs font-mono text-white/60 pl-4 group-hover:text-white/65 w-12 text-right">
                 {Math.floor(song.duration_seconds / 60)}:{String(Math.floor(song.duration_seconds) % 60).padStart(2, '0')}
             </div>
 
@@ -235,19 +233,20 @@ const SongRow = memo(({
             <div className="relative ml-2">
                 <GlassButton
                     variant="ghost"
+                    aria-label={`Actions for ${song.title || 'track'}`} title="Track actions"
                     onClick={(e) => {
                         e.stopPropagation();
                         onMenuToggle(song);
                     }}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${menuOpen ? 'bg-white/10 text-white opacity-100' : 'text-white/30 hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100'}`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${menuOpen ? 'bg-white/10 text-white opacity-100' : 'text-white/60 hover:text-white hover:bg-white/10 opacity-70 group-hover:opacity-100 focus-visible:opacity-100'}`}
                 >
                     <IconMoreVertical size={20} />
                 </GlassButton>
 
                 {menuOpen && (
-                    <div
+                    <GlassCard
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute right-0 top-full mt-1 w-56 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl z-[100] overflow-visible animate-fade-in ring-1 ring-white/10"
+                        className="luma-track-menu !p-0 absolute right-0 top-full mt-1 w-56 z-[100] overflow-visible animate-fade-in"
                     >
                         <GlassButton variant="ghost" className="w-full text-left p-3" disabled={song.missing} onClick={() => onQueue(song, true)}>Play next</GlassButton>
                         <GlassButton variant="ghost" className="w-full text-left p-3" disabled={song.missing} onClick={() => onQueue(song, false)}>Add to queue</GlassButton>
@@ -260,7 +259,7 @@ const SongRow = memo(({
                             }}
                             className="w-full text-left px-4 py-3 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-3 border-b border-white/5 relative z-10"
                         >
-                            <IconInfo size={18} className="text-white/50" />
+                            <IconInfo size={18} className="text-white/65" />
                             Song Info
                         </GlassButton>
 
@@ -274,52 +273,41 @@ const SongRow = memo(({
                                 className={`w-full text-left px-4 py-3 text-sm transition-colors flex items-center justify-between ${showSubmenu ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <IconPlus size={18} className="text-white/50" />
+                                    <IconPlus size={18} className="text-white/65" />
                                     Add to Playlist
                                 </div>
                             </GlassButton>
 
                             {/* Side Submenu - Absolute Left */}
                             {showSubmenu && (
-                                <div
+                                <GlassCard
                                     onClick={(e) => e.stopPropagation()}
-                                    className="absolute right-full top-0 mr-2 w-48 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl z-[101] overflow-hidden ring-1 ring-white/10 animate-fade-in"
+                                    className="luma-track-menu !p-0 absolute right-full top-0 mr-2 w-48 z-[101] overflow-hidden animate-fade-in"
                                 >
-                                    <div className="px-4 py-2 text-[10px] text-white/40 font-mono uppercase tracking-wider bg-white/5 border-b border-white/5">
+                                    <div className="px-4 py-2 text-[10px] text-white/65 font-mono uppercase tracking-wider bg-white/5 border-b border-white/5">
                                         Select Playlists
                                     </div>
                                     <div className="max-h-48 overflow-y-auto scrollbar-hidden">
                                         {playlists.length === 0 ? (
-                                            <div className="px-4 py-3 text-sm text-white/30 italic text-center">No playlists created</div>
+                                            <div className="px-4 py-3 text-sm text-white/60 italic text-center">No playlists created</div>
                                         ) : (
                                             playlists.map((pl, i) => {
                                                 const isAdded = pl.tracks.includes(song.path);
                                                 return (
-                                                    <GlassButton variant="ghost"
-                                                        key={i}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onAddToPlaylist(song, pl.name, true);
-                                                        }}
-                                                        className="w-full text-left px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-3 group/item"
-                                                    >
-                                                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isAdded ? 'bg-white border-white' : 'border-white/30 group-hover/item:border-white/60'}`}>
-                                                            {isAdded && (
-                                                                <IconCheck size={10} stroke="black" />
-                                                            )}
-                                                        </div>
-                                                        <span className="truncate">{pl.name}</span>
-                                                    </GlassButton>
+                                                    <div key={i} className="px-4 py-2">
+                                                        <GlassCheckbox label={pl.name} aria-label={pl.name} checked={isAdded}
+                                                            onChange={() => onAddToPlaylist(song, pl.name, true)} />
+                                                    </div>
                                                 );
                                             })
                                         )}
                                     </div>
-                                </div>
+                                </GlassCard>
                             )}
                         </div>
-                    </div>
+                    </GlassCard>
                 )}
             </div>
-        </div>
+        </GlassCard>
     );
 });

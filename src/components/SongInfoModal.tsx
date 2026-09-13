@@ -92,7 +92,7 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                     <GlassButton
                         variant="ghost"
                         onClick={onClose}
-                        className="absolute top-4 right-4 w-8 h-8 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white/50 hover:text-white transition-all z-20"
+                        className="absolute top-4 right-4 w-8 h-8 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 rounded-full flex items-center justify-center text-white/65 hover:text-white transition-all z-20"
                     >
                         <IconClose />
                     </GlassButton>
@@ -116,7 +116,7 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                         <div className="space-y-4">
                             {/* Reuse input style */}
                             {(() => {
-                                const labelClass = "text-xs font-mono uppercase text-white/40 block mb-1";
+                                const labelClass = "text-xs font-mono uppercase text-white/65 block mb-1";
                                 return (
                                     <>
                                         <div>
@@ -205,7 +205,7 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                         <>
                             <div>
                                 <GlassHeading as="h2" className="text-2xl font-bold text-white leading-tight">{song.title || "Unknown Title"}</GlassHeading>
-                                <GlassText as="p" className="text-white/50 text-lg">{song.artist || "Unknown Artist"}</GlassText>
+                                <GlassText as="p" className="text-white/65 text-lg">{song.artist || "Unknown Artist"}</GlassText>
                             </div>
 
                             <div className="space-y-2 text-sm pt-2">
@@ -222,7 +222,7 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                                 {/* Technical Info Group */}
                                 <GlassDivider className="my-4" />
                                 <div>
-                                    <div className="text-white/30 font-mono uppercase text-xs mb-3">Technical Info</div>
+                                    <div className="text-white/60 font-mono uppercase text-xs mb-3">Technical Info</div>
                                     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                                         <InfoRow label="Bitrate" value={song.bitrate ? `${song.bitrate} kbps` : "—"} mono compact />
                                         <InfoRow label="Sample Rate" value={song.sample_rate ? `${song.sample_rate} Hz` : "—"} mono compact />
@@ -244,8 +244,8 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
                                 {/* File Path */}
                                 <GlassDivider className="my-4" />
                                 <div>
-                                    <span className="text-white/30 font-mono uppercase text-xs block mb-1">File Path</span>
-                                    <span className="text-white/40 text-xs break-all font-mono leading-relaxed select-text">{song.path}</span>
+                                    <span className="text-white/60 font-mono uppercase text-xs block mb-1">File Path</span>
+                                    <span className="text-white/65 text-xs break-all font-mono leading-relaxed select-text">{song.path}</span>
                                 </div>
                             </div>
                         </>
@@ -268,7 +268,7 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
 function InfoRow({ label, value, mono, compact }: { label: string; value: string; mono?: boolean, compact?: boolean }) {
     return (
         <div className={`flex justify-between border-b border-white/5 ${compact ? 'pb-1' : 'pb-2'}`}>
-            <span className="text-white/40 font-mono uppercase text-xs">{label}</span>
+            <span className="text-white/65 font-mono uppercase text-xs">{label}</span>
             <span className={`text-white/80 ${mono ? 'font-mono' : ''} ${compact ? 'text-xs' : 'text-sm'}`}>{value}</span>
         </div>
     );

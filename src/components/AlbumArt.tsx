@@ -57,7 +57,7 @@ export function AlbumArt({ song, className, placeholderContent, useOriginal = fa
     return (
         <div ref={imgRef} className={`${className} relative overflow-hidden bg-white/5`}>
             {!song.has_album_art || failed ? (
-                <div className="w-full h-full flex items-center justify-center text-white/20">
+                <div className="w-full h-full flex items-center justify-center text-white/60">
                     {placeholderContent || <IconMusicNote size="40%" />}
                 </div>
             ) : art ? (

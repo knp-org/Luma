@@ -29,6 +29,12 @@ export function SleepTimerMenu({
     const [action, setAction] = useState<'stop' | 'quit'>('stop');
     const menuRef = useRef<HTMLDivElement>(null);
 
+    useEffect(() => {
+        const previous = document.activeElement as HTMLElement | null;
+        menuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+        return () => { if (previous?.isConnected) previous.focus(); };
+    }, []);
+
     // Close on click outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -65,7 +71,13 @@ export function SleepTimerMenu({
     };
 
     return (
-        <GlassCard
+        <div ref={menuRef} role="dialog" aria-label="Sleep timer settings" onKeyDown={event => {
+            if (event.key !== 'Tab') return;
+            const controls = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)')];
+            const first = controls[0], last = controls[controls.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+        }}><GlassCard
             className={`absolute border border-white/10 p-4 w-64 shadow-2xl z-[100] animate-fade-in ${className}`}
         >
             <div className="flex items-center justify-between mb-4">
@@ -84,32 +96,9 @@ export function SleepTimerMenu({
             </div>
 
             {/* Action Toggle */}
-            <div className="bg-white/5 rounded-lg p-1 relative flex mb-4">
-                {/* Sliding Active Background */}
-                <div 
-                    className="absolute top-1 bottom-1 bg-white rounded-md transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]" 
-                    style={{
-                        width: 'calc(50% - 4px)',
-                        left: action === 'stop' ? '4px' : '50%',
-                    }}
-                />
-                
-                <GlassButton
-                    variant="ghost"
-                    onClick={() => setAction('stop')}
-                    style={{ flex: 1, position: 'relative', zIndex: 10, textAlign: 'center', fontSize: '12px', padding: '6px 8px' }}
-                    className={`transition-colors ${action === 'stop' ? '!text-black font-semibold' : 'text-white/60 hover:text-white'}`}
-                >
-                    Stop Music
-                </GlassButton>
-                <GlassButton
-                    variant="ghost"
-                    onClick={() => setAction('quit')}
-                    style={{ flex: 1, position: 'relative', zIndex: 10, textAlign: 'center', fontSize: '12px', padding: '6px 8px' }}
-                    className={`transition-colors ${action === 'quit' ? '!text-black font-semibold' : 'text-white/60 hover:text-white'}`}
-                >
-                    Quit App
-                </GlassButton>
+            <div className="flex gap-2 mb-4" role="group" aria-label="Timer action">
+                <GlassButton variant={action === 'stop' ? 'primary' : 'secondary'} aria-pressed={action === 'stop'} onClick={() => setAction('stop')} className="flex-1" size="sm">Stop Music</GlassButton>
+                <GlassButton variant={action === 'quit' ? 'primary' : 'secondary'} aria-pressed={action === 'quit'} onClick={() => setAction('quit')} className="flex-1" size="sm">Quit App</GlassButton>
             </div>
 
             {/* Quick Options */}
@@ -140,6 +129,7 @@ export function SleepTimerMenu({
             {/* Custom Time */}
             <div className="flex gap-2 items-stretch">
                 <GlassInput
+                    aria-label="Sleep timer minutes"
                     type="number"
                     value={customMinutes}
                     onChange={(e) => setCustomMinutes(e.target.value)}
@@ -163,12 +153,12 @@ export function SleepTimerMenu({
             {/* Active Status */}
             {activeTimer && (
                 <div className="mt-4 pt-3 border-t border-white/10 text-center">
-                    <GlassText as="p" className="text-xs text-white/40 mb-1">Timer Active</GlassText>
-                    <GlassText as="p" className="text-sm font-mono text-blue-400">
+                    <GlassText as="p" className="text-xs text-white/65 mb-1">Timer Active</GlassText>
+                    <GlassText as="p" className="text-sm font-mono text-white/80">
                         Ends in {Math.ceil((activeTimer.endTime - Date.now()) / 60000)} min
                     </GlassText>
                 </div>
             )}
-        </GlassCard>
+        </GlassCard></div>
     );
 }

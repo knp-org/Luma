@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Song } from "../models";
 import { SmartRule, smartSongs } from "../utils/smartPlaylists";
-import { GlassButton, GlassInput, GlassCard } from "@knp-org/liquid-glass-ui";
+import { GlassButton, GlassInput, GlassCard, GlassSelect, GlassText } from "@knp-org/liquid-glass-ui";
 const builtins: SmartRule[] = [
   { name: "Recently added", mode: "recent" },
   { name: "Never played", mode: "never" },
@@ -74,7 +74,7 @@ export function SmartPlaylists({
   return (
     <section className="mb-6 space-y-3">
       <h2 className="text-lg font-semibold">Smart playlists</h2>
-      <p className="text-xs text-white/50">
+      <p className="text-xs text-white/65">
         These collections update as your library and listening history change.
         Recent and most played show up to 100 tracks.
       </p>
@@ -82,7 +82,7 @@ export function SmartPlaylists({
         {rules.map(({ rule, tracks }, index) => (
           <GlassCard key={index} className="p-3">
             <div className="font-medium text-sm">{rule.name}</div>
-            <div className="text-xs text-white/40 mb-2">
+            <div className="text-xs text-white/65 mb-2">
               {tracks.length} tracks
             </div>
             <div className="flex gap-2">
@@ -112,72 +112,85 @@ export function SmartPlaylists({
         <summary className="cursor-pointer text-sm text-white/70">
           Create a smart playlist
         </summary>
-        <form
-          className="mt-3 flex gap-2 flex-wrap"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!rule.name.trim()) return;
-            if (rule.yearFrom && rule.yearTo && rule.yearFrom > rule.yearTo) {
-              setMessage("Start year must be before the end year.");
-              return;
-            }
-            persist([...saved, { ...rule, name: rule.name.trim() }]);
-            setRule({ name: "", mode: "filter" });
-          }}
-        >
-          <GlassInput
-            aria-label="Smart playlist name"
-            placeholder="Name"
-            value={rule.name}
-            onChange={(e) => setRule({ ...rule, name: e.target.value })}
-            required
-          />
-          <GlassInput
-            aria-label="Genre filter"
-            placeholder="Genre (optional)"
-            value={rule.genre || ""}
-            onChange={(e) => setRule({ ...rule, genre: e.target.value })}
-          />
-          <GlassInput
-            aria-label="Start year"
-            type="number"
-            min="1"
-            max="9999"
-            placeholder="From year"
-            value={rule.yearFrom || ""}
-            onChange={(e) =>
-              setRule({
-                ...rule,
-                yearFrom: Number(e.target.value) || undefined,
-              })
-            }
-          />
-          <GlassInput
-            aria-label="End year"
-            type="number"
-            min="1"
-            max="9999"
-            placeholder="To year"
-            value={rule.yearTo || ""}
-            onChange={(e) =>
-              setRule({ ...rule, yearTo: Number(e.target.value) || undefined })
-            }
-          />
-          <select
-            aria-label="Listening filter"
-            className="bg-neutral-900 rounded p-2"
-            value={rule.mode}
-            onChange={(e) =>
-              setRule({ ...rule, mode: e.target.value as SmartRule["mode"] })
-            }
+        <GlassCard className="luma-smart-playlist-editor">
+          <GlassText variant="muted" className="mb-4">
+            Give your playlist a name, then choose optional filters.
+          </GlassText>
+          <form
+            className="luma-smart-playlist-form"
+            aria-label="Create a smart playlist"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!rule.name.trim()) return;
+              if (rule.yearFrom && rule.yearTo && rule.yearFrom > rule.yearTo) {
+                setMessage("Start year must be before the end year.");
+                return;
+              }
+              persist([...saved, { ...rule, name: rule.name.trim() }]);
+              setRule({ name: "", mode: "filter" });
+            }}
           >
-            <option value="filter">All matching tracks</option>
-            <option value="never">Never played</option>
-            <option value="most">Most played</option>
-            <option value="recent">Recently added</option>
-          </select>
-          <GlassButton type="submit">Save rule</GlassButton>
-        </form>
+            <GlassInput
+              label="Name"
+              containerClassName="luma-smart-playlist-wide"
+              aria-label="Smart playlist name"
+              placeholder="e.g. Evening jazz"
+              value={rule.name}
+              onChange={(e) => setRule({ ...rule, name: e.target.value })}
+              required
+            />
+            <GlassInput
+              label="Genre (optional)"
+              containerClassName="luma-smart-playlist-wide"
+              aria-label="Genre filter"
+              placeholder="Any genre"
+              value={rule.genre || ""}
+              onChange={(e) => setRule({ ...rule, genre: e.target.value })}
+            />
+            <GlassInput
+              label="From year"
+              aria-label="Start year"
+              type="number"
+              min="1"
+              max="9999"
+              placeholder="Any"
+              value={rule.yearFrom || ""}
+              onChange={(e) =>
+                setRule({
+                  ...rule,
+                  yearFrom: Number(e.target.value) || undefined,
+                })
+              }
+            />
+            <GlassInput
+              label="To year"
+              aria-label="End year"
+              type="number"
+              min="1"
+              max="9999"
+              placeholder="Any"
+              value={rule.yearTo || ""}
+              onChange={(e) =>
+                setRule({ ...rule, yearTo: Number(e.target.value) || undefined })
+              }
+            />
+            <GlassSelect
+              label="Listening filter"
+              containerClassName="luma-smart-playlist-wide"
+              value={rule.mode}
+              onChange={(value) => setRule({ ...rule, mode: value as SmartRule["mode"] })}
+              options={[
+                { value: 'filter', label: 'All matching tracks' },
+                { value: 'never', label: 'Never played' },
+                { value: 'most', label: 'Most played' },
+                { value: 'recent', label: 'Recently added' },
+              ]}
+            />
+            <div className="luma-smart-playlist-actions">
+              <GlassButton type="submit" variant="primary">Create smart playlist</GlassButton>
+            </div>
+          </form>
+        </GlassCard>
       </details>
       {message && (
         <p role="status" className="text-sm text-amber-200">

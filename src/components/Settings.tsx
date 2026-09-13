@@ -7,6 +7,10 @@ import {
   GlassInput,
   GlassHeading,
   GlassProgress,
+  GlassTextarea,
+  GlassCheckbox,
+  GlassSlider,
+  GlassSelect,
 } from "@knp-org/liquid-glass-ui";
 
 interface SettingsProps {
@@ -96,31 +100,27 @@ export function Settings({
           {message}
         </p>
       )}
-      <GlassCard className="p-5 space-y-3">
+      <GlassCard className="luma-settings-card p-5 space-y-3">
         <label htmlFor="music-folders" className="block font-medium">
           Music folders
         </label>
-        <p className="text-sm text-white/50">
+        <p className="text-sm text-white/65">
           One full folder path per line. Subfolders are included.
         </p>
-        <textarea
+        <GlassTextarea
           id="music-folders"
           value={folders}
           onChange={(e) => setFolders(e.target.value)}
           rows={4}
-          className="w-full rounded-lg bg-black/30 border border-white/20 p-3 text-sm"
+          className="w-full text-sm"
           placeholder="/home/you/Music"
         />
-        <label className="flex gap-2 items-center text-sm">
-          <input
-            type="checkbox"
+        <GlassCheckbox label="Automatically update the library when files change" aria-label="Automatically update the library when files change"
             checked={draft.watch_library}
             onChange={(e) =>
               setDraft({ ...draft, watch_library: e.target.checked })
             }
-          />{" "}
-          Automatically update the library when files change
-        </label>
+        />
         <div className="flex gap-3 items-center flex-wrap">
           <GlassButton
             disabled={busy || loading}
@@ -153,26 +153,21 @@ export function Settings({
           </details>
         )}
       </GlassCard>
-      <GlassCard className="p-5 space-y-4">
+      <GlassCard className="luma-settings-card p-5 space-y-4">
         <GlassHeading as="h2" className="text-lg">
           Playback
         </GlassHeading>
-        <label className="flex gap-2 items-center">
-          <input
-            type="checkbox"
+        <GlassCheckbox label="Gapless playback" aria-label="Gapless playback"
             checked={draft.audio.gapless}
             onChange={(e) => updateAudio("gapless", e.target.checked)}
-          />{" "}
-          Gapless playback
-        </label>
+        />
         <label className="block text-sm">
           Crossfade:{" "}
           {draft.audio.crossfade_seconds === 0
             ? "Off"
             : `${draft.audio.crossfade_seconds} seconds`}
-          <input
+          <GlassSlider
             aria-label="Crossfade seconds"
-            type="range"
             min="0"
             max="12"
             step="1"
@@ -183,40 +178,26 @@ export function Settings({
             className="block w-full mt-2"
           />
         </label>
-        <p className="text-xs text-white/50">
+        <p className="text-xs text-white/65">
           Crossfade overlaps the end and start of adjacent tracks. Set it to Off
           for uninterrupted album transitions without overlap.
         </p>
-        <label className="flex gap-2 items-center">
-          <input
-            type="checkbox"
+        <GlassCheckbox label="Normalize volume using ReplayGain track tags" aria-label="Normalize volume using ReplayGain track tags"
             checked={draft.audio.replay_gain}
             onChange={(e) => updateAudio("replay_gain", e.target.checked)}
-          />{" "}
-          Normalize volume using ReplayGain track tags
-        </label>
-        <p className="text-xs text-white/50">
+        />
+        <p className="text-xs text-white/65">
           Tracks without ReplayGain tags keep their original level. Peak tags
           prevent amplification beyond full scale.
         </p>
-        <label className="flex justify-between items-center text-sm">
-          Seek interval
-          <select
-            value={draft.seek_interval}
-            onChange={(e) =>
-              setDraft({ ...draft, seek_interval: Number(e.target.value) })
-            }
-            className="bg-neutral-900 rounded p-2"
-          >
-            {[5, 10, 15, 30].map((value) => (
-              <option key={value} value={value}>
-                {value} seconds
-              </option>
-            ))}
-          </select>
-        </label>
+        <GlassSelect
+          label="Seek interval"
+          value={String(draft.seek_interval)}
+          onChange={(value) => setDraft({ ...draft, seek_interval: Number(value) })}
+          options={[5, 10, 15, 30].map(value => ({ value: String(value), label: `${value} seconds` }))}
+        />
       </GlassCard>
-      <GlassCard className="p-5 space-y-4">
+      <GlassCard className="luma-settings-card p-5 space-y-4">
         <div className="flex justify-between items-center">
           <GlassHeading as="h2" className="text-lg">
             Equalizer
@@ -242,9 +223,8 @@ export function Settings({
           <label className="block text-sm" key={key}>
             {label}: {draft.audio[key] > 0 ? "+" : ""}
             {draft.audio[key]} dB
-            <input
+            <GlassSlider
               aria-label={label}
-              type="range"
               min="-12"
               max="12"
               step="1"
@@ -254,16 +234,16 @@ export function Settings({
             />
           </label>
         ))}
-        <p className="text-xs text-white/50">
+        <p className="text-xs text-white/65">
           Boosts reserve headroom to reduce clipping.
         </p>
       </GlassCard>
       {songs.some((song) => song.missing) && (
-        <GlassCard className="p-5 space-y-3">
+        <GlassCard className="luma-settings-card p-5 space-y-3">
           <GlassHeading as="h2" className="text-lg">
             Locate missing tracks
           </GlassHeading>
-          <p className="text-sm text-white/50">
+          <p className="text-sm text-white/65">
             Reconnect the drive and sync, or enter the file’s new path. Playlist
             references and listening history will follow it.
           </p>
@@ -276,7 +256,7 @@ export function Settings({
               >
                 <p className="text-sm break-all">
                   {song.title || song.path}
-                  <span className="block text-xs text-white/40">
+                  <span className="block text-xs text-white/65">
                     {song.path}
                   </span>
                 </p>
@@ -309,7 +289,7 @@ export function Settings({
             ))}
         </GlassCard>
       )}
-      <p className="text-center text-xs text-white/30">
+      <p className="text-center text-xs text-white/60">
         Luma {version && `v${version}`}
       </p>
     </div>

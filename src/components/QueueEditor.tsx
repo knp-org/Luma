@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Song } from "../models";
-import { GlassButton, GlassInput } from "@knp-org/liquid-glass-ui";
+import { GlassButton, GlassInput, GlassCard, IconMoreVertical, IconChevronUp, IconChevronDown, IconX } from "@knp-org/liquid-glass-ui";
+import { useQueueDrag } from "../hooks/useQueueDrag";
 
 export interface QueueEditorProps {
   queue: Song[];
@@ -22,11 +23,20 @@ export function QueueEditor({
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [dragging, setDragging] = useState<number | null>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const startDrag = useQueueDrag(list, queue, onMove);
+  const entries = useMemo(() => {
+    const occurrences = new Map<string, number>();
+    return queue.map(song => {
+      const occurrence = occurrences.get(song.path) ?? 0;
+      occurrences.set(song.path, occurrence + 1);
+      return { song, key: JSON.stringify([song.path, occurrence]) };
+    });
+  }, [queue]);
   return (
     <div className="flex flex-col min-h-0 flex-1">
       <form
-        className="p-3 space-y-2 border-b border-white/10"
+        className="p-3 space-y-2 border-b border-white/10 shrink-0"
         onSubmit={async (e) => {
           e.preventDefault();
           setSaving(true);
@@ -49,7 +59,7 @@ export function QueueEditor({
         <div className="flex gap-2">
           <GlassInput
             aria-label="Playlist name for queue"
-            className="min-w-0 flex-1"
+            containerClassName="min-w-0 flex-1 max-w-sm"
             placeholder="Save queue as…"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -67,64 +77,62 @@ export function QueueEditor({
           </p>
         )}
       </form>
-      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
+      <div ref={list} className="luma-queue-list" aria-label="Queue tracks" role="list">
         {!queue.length && (
-          <p className="p-5 text-sm text-white/50">
+          <p className="p-5 text-sm text-white/65">
             Your queue is empty. Add tracks from a song’s menu.
           </p>
         )}
-        {queue.map((song, index) => (
-          <div
-            key={`${song.path}-${index}`}
-            draggable
-            onDragStart={() => setDragging(index)}
-            onDragEnd={() => setDragging(null)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (dragging !== null) onMove(dragging, index);
-              setDragging(null);
-            }}
-            className={`rounded-lg p-2 border ${index === currentIndex ? "border-white/30 bg-white/10" : "border-transparent hover:bg-white/5"}`}
+        {entries.map(({ song, key }, index) => (
+          <GlassCard
+            key={key}
+            data-queue-row={index}
+            data-current={index === currentIndex}
+            role="listitem"
+            className="luma-queue-row"
           >
-            <button
-              className="w-full text-left text-sm truncate"
+            <GlassButton variant="ghost" type="button" shape="circle" size="sm"
+              className="luma-queue-drag"
+              aria-label={`Drag ${song.title || 'track'} to reorder`}
+              title="Drag to reorder; use the arrow buttons to move one position"
+              disabled={queue.length < 2}
+              onPointerDown={event => startDrag(event, index)}
+            ><IconMoreVertical size={18} /></GlassButton>
+            <GlassButton variant="ghost" type="button"
+              className="luma-queue-track text-sm"
               onClick={() => onPlayIndex(index)}
               disabled={song.missing}
               title={song.path}
             >
-              {index + 1}. {song.title || song.path.split("/").pop()}
-              {song.missing ? " (unavailable)" : ""}
-            </button>
-            <div className="flex items-center gap-1 mt-1">
-              <span className="flex-1 min-w-0 text-xs truncate text-white/40">
-                {song.artist || "Unknown artist"}
+              <span className="min-w-0">
+                <span className="block truncate">{index + 1}. {song.title || song.path.split("/").pop()}
+                {song.missing ? " (unavailable)" : ""}</span>
+                <span className="block truncate text-xs text-white/65">{song.artist || "Unknown artist"}</span>
               </span>
-              <button
-                className="p-2 disabled:opacity-20"
+            </GlassButton>
+            <div className="luma-queue-actions">
+              <GlassButton variant="ghost" type="button" shape="circle" size="sm"
                 aria-label={`Move ${song.title} up`}
                 disabled={index === 0}
                 onClick={() => onMove(index, index - 1)}
               >
-                ↑
-              </button>
-              <button
-                className="p-2 disabled:opacity-20"
+                <IconChevronUp size={16} />
+              </GlassButton>
+              <GlassButton variant="ghost" type="button" shape="circle" size="sm"
                 aria-label={`Move ${song.title} down`}
                 disabled={index === queue.length - 1}
                 onClick={() => onMove(index, index + 1)}
               >
-                ↓
-              </button>
-              <button
-                className="p-2 text-white/50"
+                <IconChevronDown size={16} />
+              </GlassButton>
+              <GlassButton variant="ghost" type="button" shape="circle" size="sm"
                 aria-label={`Remove ${song.title} from queue`}
                 onClick={() => onRemove(index)}
               >
-                ×
-              </button>
+                <IconX size={16} />
+              </GlassButton>
             </div>
-          </div>
+          </GlassCard>
         ))}
       </div>
     </div>

@@ -6,8 +6,8 @@ type QueueRecord = { revision: string; queue: Song[] };
 const defaults = { currentIndex: -1, currentTime: 0, volume: 0.5, isShuffle: false, loopMode: 'off' as const, isPlaying: false };
 
 export class PlaybackStorage {
-    private queueStore = load('playback-queue.json', { autoSave: false });
-    private progressStore = load('playback-progress.json', { autoSave: false });
+    private queueStore = load('playback-queue.json', { defaults: {}, autoSave: false });
+    private progressStore = load('playback-progress.json', { defaults: {}, autoSave: false });
     private queue: Song[] | undefined;
     private revision = '';
     private checkpoint = '';
@@ -26,7 +26,7 @@ export class PlaybackStorage {
             // A crash between the two saves must not apply an old position to a new queue.
             return { ...defaults, queue: record.queue, currentIndex: record.queue.length ? 0 : -1 };
         }
-        const legacy = await load('playback-state.json', { autoSave: false });
+        const legacy = await load('playback-state.json', { defaults: {}, autoSave: false });
         return (await legacy.get<PlaybackState>('luma_playback_state')) ?? null;
     }
     save(state: PlaybackState): Promise<void> {
