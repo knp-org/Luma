@@ -1,8 +1,7 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::io::Write;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 struct PlayStats {
@@ -31,14 +30,14 @@ fn load_stats() -> PlayStats {
 
 fn save_stats(stats: &PlayStats) -> Result<(), String> {
     let path = get_analytics_path();
-    let json = serde_json::to_string_pretty(stats).map_err(|e| e.to_string())?;
-    let mut file = fs::File::create(path).map_err(|e| e.to_string())?;
-    file.write_all(json.as_bytes()).map_err(|e| e.to_string())?;
-    Ok(())
+    crate::storage::write_json(&path, stats)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn increment_play_count(path: String) -> Result<u64, String> {
+    let _lock = crate::storage::DATA_LOCK
+        .lock()
+        .map_err(|e| e.to_string())?;
     let mut stats = load_stats();
     let count = stats.counts.entry(path).or_insert(0);
     *count += 1;
@@ -53,10 +52,11 @@ pub struct SongPlayCount {
     pub count: u64,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn get_play_stats() -> Result<Vec<SongPlayCount>, String> {
     let stats = load_stats();
-    let mut result: Vec<SongPlayCount> = stats.counts
+    let mut result: Vec<SongPlayCount> = stats
+        .counts
         .into_iter()
         .map(|(path, count)| SongPlayCount { path, count })
         .collect();

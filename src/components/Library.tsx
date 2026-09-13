@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from 'react';
+import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { Song, Playlist } from '../types';
 import { AlbumArt } from './AlbumArt';
 import { GlassButton, GlassHeading, GlassText, GlassSearch, GlassEmptyState, GlassBadge, GlassSkeleton } from '@knp-org/liquid-glass-ui';
@@ -11,7 +11,8 @@ interface LibraryProps {
     isPlaying: boolean;
     playlists: Playlist[];
     menuOpenFor: string | null;
-    onPlaySong: (song: Song) => void;
+    onPlaySong: (song: Song, context?: Song[]) => void;
+    onQueue: (song: Song, next?: boolean) => void;
     onMenuToggle: (path: string | null) => void;
     onAddToPlaylist: (playlistName: string, songPath: string, keepOpen?: boolean) => void;
     onShowSongInfo: (song: Song) => void;
@@ -29,6 +30,7 @@ export function Library({
     playlists,
     menuOpenFor,
     onPlaySong,
+    onQueue,
     onMenuToggle,
     onAddToPlaylist,
     onShowSongInfo,
@@ -37,27 +39,49 @@ export function Library({
     emptyMessage = "No songs in your library",
     showSyncButton = true,
 }: LibraryProps) {
-    const [visibleCount, setVisibleCount] = useState(50);
+    const [scrollTop, setScrollTop] = useState(0);
+    const [viewportHeight, setViewportHeight] = useState(640);
+    const [focusedPath, setFocusedPath] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const loadMoreRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
-    // Reset visible count when songs change (e.g. after a fresh sync)
+    const filteredSongs = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        return songs.filter(song => !query || [song.title, song.artist, song.album, song.path].some(value => value?.toLowerCase().includes(query)));
+    }, [songs, searchQuery]);
+
+    const latest = useRef({ onPlaySong, onQueue, onMenuToggle, onAddToPlaylist, onShowSongInfo, filteredSongs, menuOpenFor });
+    latest.current = { onPlaySong, onQueue, onMenuToggle, onAddToPlaylist, onShowSongInfo, filteredSongs, menuOpenFor };
+    // Stable handlers let memoized rows skip unrelated playback-clock updates.
+    const actions = useMemo(() => ({
+        onPlay: (song: Song) => latest.current.onPlaySong(song, latest.current.filteredSongs),
+        onQueue: (song: Song, next: boolean) => { latest.current.onQueue(song, next); latest.current.onMenuToggle(null); },
+        onMenuToggle: (song: Song) => latest.current.onMenuToggle(latest.current.menuOpenFor === song.path ? null : song.path),
+        onAddToPlaylist: (song: Song, name: string, keepOpen?: boolean) => latest.current.onAddToPlaylist(name, song.path, keepOpen),
+        onShowInfo: (song: Song) => latest.current.onShowSongInfo(song),
+    }), []);
     useEffect(() => {
-        setVisibleCount(50);
-    }, [songs.length]);
-
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+        setScrollTop(0);
+    }, [songs.length, searchQuery, title]);
     useEffect(() => {
-        if (!loadMoreRef.current) return;
-
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting && visibleCount < songs.length) {
-                setVisibleCount(prev => prev + 50);
-            }
-        }, { threshold: 0.1 });
-
-        observer.observe(loadMoreRef.current);
+        const node = scrollRef.current;
+        if (!node) return;
+        const observer = new ResizeObserver(() => setViewportHeight(node.clientHeight));
+        observer.observe(node);
+        setViewportHeight(node.clientHeight || 640);
         return () => observer.disconnect();
-    }, [visibleCount, songs.length]);
+    }, []);
+    const rowHeight = 70;
+    const first = Math.max(0, Math.min(filteredSongs.length - 1, Math.floor(scrollTop / rowHeight) - 6));
+    const last = Math.min(filteredSongs.length, first + Math.ceil(viewportHeight / rowHeight) + 12);
+    const visibleIndices = Array.from({ length: Math.max(0, last - first) }, (_, i) => first + i);
+    // Keep an open menu or keyboard focus mounted while its row scrolls away.
+    for (const path of [menuOpenFor, focusedPath]) {
+        const index = path ? filteredSongs.findIndex(song => song.path === path) : -1;
+        if (index >= 0 && !visibleIndices.includes(index)) visibleIndices.push(index);
+    }
+    visibleIndices.sort((a, b) => a - b);
 
     return (
         <>
@@ -79,7 +103,10 @@ export function Library({
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 scrollbar-hidden">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 scrollbar-hidden"
+                onScroll={event => setScrollTop(event.currentTarget.scrollTop)}
+                onFocusCapture={event => setFocusedPath((event.target as HTMLElement).closest<HTMLElement>('[data-song-path]')?.dataset.songPath ?? null)}
+                onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusedPath(null); }}>
                 {loading ? (
                     <div className="flex flex-col gap-3 p-4">
                         <GlassSkeleton height="48px" />
@@ -100,38 +127,20 @@ export function Library({
                         />
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-1 pb-32">
-                        {songs
-                            .filter(song => {
-                                if (!searchQuery.trim()) return true;
-                                const query = searchQuery.toLowerCase();
-                                return (
-                                    (song.title?.toLowerCase().includes(query)) ||
-                                    (song.artist?.toLowerCase().includes(query)) ||
-                                    (song.album?.toLowerCase().includes(query)) ||
-                                    (song.path.toLowerCase().includes(query))
-                                );
-                            })
-                            .slice(0, visibleCount)
-                            .map((song, idx) => (
-                                <SongRow
-                                    key={idx}
-                                    song={song}
-                                    isCurrent={currentSong?.path === song.path}
-                                    isPlaying={isPlaying}
-                                    menuOpen={menuOpenFor === song.path}
-                                    playlists={playlists}
-                                    onPlay={() => onPlaySong(song)}
-                                    onMenuToggle={() => onMenuToggle(menuOpenFor === song.path ? null : song.path)}
-                                    onAddToPlaylist={(playlistName, keepOpen) => onAddToPlaylist(playlistName, song.path, keepOpen)}
-                                    onShowInfo={() => onShowSongInfo(song)}
-                                />
-                            ))}
-                        {visibleCount < songs.length && (
-                            <div ref={loadMoreRef} className="h-20 flex items-center justify-center text-white/20 text-xs font-mono uppercase tracking-widest animate-pulse">
-                                Loading more tracks...
-                            </div>
-                        )}
+                    <div role="list" aria-label={title} style={{ position: 'relative', height: filteredSongs.length * rowHeight + 128 }}>
+                        {visibleIndices.map(index => {
+                            const song = filteredSongs[index];
+                            return (
+                                <div key={song.path} role="listitem" aria-setsize={filteredSongs.length} aria-posinset={index + 1}
+                                    data-song-path={song.path}
+                                    style={{ position: 'absolute', top: index * rowHeight, left: 0, right: 0, height: 66, zIndex: menuOpenFor === song.path ? 40 : undefined }}>
+                                    <SongRow song={song} isCurrent={currentSong?.path === song.path}
+                                        isPlaying={currentSong?.path === song.path && isPlaying}
+                                        menuOpen={menuOpenFor === song.path} playlists={playlists} {...actions} />
+                                </div>
+                            );
+                        })}
+                        {filteredSongs.length === 0 && <p className="p-6 text-white/50">No matching songs</p>}
                     </div>
                 )}
             </div>
@@ -145,10 +154,11 @@ interface SongRowProps {
     isPlaying: boolean;
     menuOpen: boolean;
     playlists: Playlist[];
-    onPlay: () => void;
-    onMenuToggle: () => void;
-    onAddToPlaylist: (playlistName: string, keepOpen?: boolean) => void;
-    onShowInfo: () => void;
+    onPlay: (song: Song) => void;
+    onQueue: (song: Song, next: boolean) => void;
+    onMenuToggle: (song: Song) => void;
+    onAddToPlaylist: (song: Song, playlistName: string, keepOpen?: boolean) => void;
+    onShowInfo: (song: Song) => void;
 }
 
 const SongRow = memo(({
@@ -158,6 +168,7 @@ const SongRow = memo(({
     menuOpen,
     playlists,
     onPlay,
+    onQueue,
     onMenuToggle,
     onAddToPlaylist,
     onShowInfo,
@@ -170,7 +181,8 @@ const SongRow = memo(({
 
     return (
         <div
-            onClick={onPlay}
+            onClick={() => onPlay(song)}
+            style={{ height: 66, boxSizing: 'border-box' }}
             className={`group flex items-center p-2 rounded-lg transition-all cursor-pointer border border-transparent relative
         ${isCurrent
                     ? "bg-white/10 border-white/10 shadow-lg backdrop-blur-sm"
@@ -225,7 +237,7 @@ const SongRow = memo(({
                     variant="ghost"
                     onClick={(e) => {
                         e.stopPropagation();
-                        onMenuToggle();
+                        onMenuToggle(song);
                     }}
                     className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${menuOpen ? 'bg-white/10 text-white opacity-100' : 'text-white/30 hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100'}`}
                 >
@@ -237,12 +249,14 @@ const SongRow = memo(({
                         onClick={(e) => e.stopPropagation()}
                         className="absolute right-0 top-full mt-1 w-56 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl z-[100] overflow-visible animate-fade-in ring-1 ring-white/10"
                     >
+                        <GlassButton variant="ghost" className="w-full text-left p-3" disabled={song.missing} onClick={() => onQueue(song, true)}>Play next</GlassButton>
+                        <GlassButton variant="ghost" className="w-full text-left p-3" disabled={song.missing} onClick={() => onQueue(song, false)}>Add to queue</GlassButton>
                         {/* Song Info Option */}
                         <GlassButton variant="ghost"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onShowInfo();
-                                onMenuToggle();
+                                onShowInfo(song);
+                                onMenuToggle(song);
                             }}
                             className="w-full text-left px-4 py-3 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-3 border-b border-white/5 relative z-10"
                         >
@@ -285,7 +299,7 @@ const SongRow = memo(({
                                                         key={i}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            onAddToPlaylist(pl.name, true);
+                                                            onAddToPlaylist(song, pl.name, true);
                                                         }}
                                                         className="w-full text-left px-4 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-3 group/item"
                                                     >

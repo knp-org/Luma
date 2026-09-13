@@ -86,7 +86,7 @@ export function PlayerBar({
     };
 
     return (
-        <div className="h-24 bg-white/5 backdrop-blur-3xl border-t border-white/10 grid grid-cols-3 items-center px-8 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
+        <div data-player-controls data-player-bar className="h-24 bg-white/5 backdrop-blur-3xl border-t border-white/10 grid grid-cols-3 items-center px-8 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
             {/* Info - Click to open player page */}
             <div className="min-w-0 flex items-center gap-4">
                 {currentSong ? (
@@ -173,7 +173,7 @@ export function PlayerBar({
                     <GlassTooltip text="Next Track">
                         <GlassButton
                             variant="ghost"
-                            onClick={onNextTrack}
+                            onClick={() => onNextTrack()}
                             className="w-9 h-9 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
                         >
                             <IconNextTrack />

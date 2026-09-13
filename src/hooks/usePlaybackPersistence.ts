@@ -1,9 +1,8 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { load } from "@tauri-apps/plugin-store";
-import { PlaybackState, UsePlaybackPersistenceProps } from "../models";
+import { UsePlaybackPersistenceProps } from "../models";
 
-const PLAYBACK_STATE_KEY = "luma_playback_state";
+import { PlaybackStorage } from "../services/playbackStorage";
 
 export function usePlaybackPersistence({
     queue,
@@ -20,6 +19,9 @@ export function usePlaybackPersistence({
     setIsShuffle,
     setLoopMode,
 }: UsePlaybackPersistenceProps) {
+    const restored = useRef(false);
+    const storage = useRef<PlaybackStorage | null>(null);
+    const getStorage = () => storage.current ?? (storage.current = new PlaybackStorage());
     const stateRef = useRef({ queue, currentIndex, currentTime, volume, isShuffle, loopMode, isPlaying });
 
     useEffect(() => {
@@ -28,36 +30,37 @@ export function usePlaybackPersistence({
 
     const saveState = async () => {
         const current = stateRef.current;
-        if (current.queue.length === 0) return;
+        if (!restored.current) return;
 
         try {
-            const store = await load("playback-state.json");
-            await store.set(PLAYBACK_STATE_KEY, current);
-            await store.save();
+            await getStorage().save(current);
         } catch (e) {
             console.error("Failed to save playback state", e);
         }
     };
     useEffect(() => {
+        let active = true;
         async function restore() {
             try {
-                const store = await load("playback-state.json");
-                const savedState = await store.get<PlaybackState>(PLAYBACK_STATE_KEY);
-                if (savedState && savedState.queue && savedState.queue.length > 0) {
-                    setQueue(savedState.queue);
-                    setCurrentIndex(savedState.currentIndex);
-                    setCurrentTime(savedState.currentTime);
-                    setVolume(savedState.volume);
-                    setIsShuffle(savedState.isShuffle);
-                    setLoopMode(savedState.loopMode);
-                    await invoke("set_player_volume", { volume: savedState.volume });
-                    console.log("Restored playback state", savedState);
+                const savedState = await getStorage().restore();
+                // A slow restore must not replace a queue the user has already started.
+                if (active && savedState && stateRef.current.queue.length === 0 && stateRef.current.currentIndex === -1) {
+                    const savedQueue = Array.isArray(savedState.queue) ? savedState.queue.filter(song => song && typeof song.path === 'string') : [];
+                    const savedVolume = Math.max(0, Math.min(savedState.volume ?? 0.5, 1));
+                    setQueue(savedQueue);
+                    setCurrentIndex(savedQueue.length ? Math.max(0, Math.min(savedState.currentIndex || 0, savedQueue.length - 1)) : -1);
+                    setCurrentTime(savedQueue.length ? Math.max(0, savedState.currentTime || 0) : 0);
+                    setVolume(savedVolume);
+                    setIsShuffle(Boolean(savedState.isShuffle));
+                    setLoopMode(["off", "all", "one"].includes(savedState.loopMode) ? savedState.loopMode : "off");
+                    await invoke("set_player_volume", { volume: savedVolume });
                 }
             } catch (e) {
                 console.error("Failed to restore playback state", e);
-            }
+            } finally { if (active) restored.current = true; }
         }
-        restore();
+        void restore();
+        return () => { active = false; };
     }, []);
 
     // Effect 1: Critical state changes (song, queue, volume, etc.) -> Save debounced (500ms)
@@ -73,20 +76,10 @@ export function usePlaybackPersistence({
             return;
         }
 
-        // While playing, save every 5 seconds (not on every second update)
-        // actually, we can just let the exit handler take care of the final save, 
-        // but a periodic save is good in case of crash.
+        // Periodic checkpoints cover crashes; the exit handler saves the final position.
         const intervalId = setInterval(saveState, 5000);
         return () => clearInterval(intervalId);
     }, [isPlaying]); // Re-setup interval when play state changes. 
-
-    // Note: We don't include `currentTime` in dependencies for Effect 1 or 2 to avoid rapid firing.
-    // However, `saveState` closes over the current scope variables. 
-    // This is a classic React closure trap if `saveState` isn't recreated.
-    // But if we separate the definition inside effects, code is duplicated.
-    // If we put `saveState` in `useCallback` with all deps, it changes every second (due to currentTime), defeating the purpose.
-
-    // SOLUTION: Use a Ref to hold the latest state, so `saveState` doesn't need to change.
 
     return { saveState };
 }

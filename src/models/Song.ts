@@ -1,5 +1,8 @@
 export interface Song {
     path: string;
+    added_at?: number;
+    modified_at?: number;
+    missing?: boolean;
     title?: string;
     artist?: string;
     album?: string;

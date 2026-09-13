@@ -4,12 +4,17 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+pub mod analytics;
+mod audio_source;
 pub mod commands;
+mod library_watch;
+pub mod lyrics;
+mod media;
 pub mod player;
 pub mod playlist;
 pub mod settings;
-pub mod lyrics;
-pub mod analytics;
+mod spectrum;
+mod storage;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -18,8 +23,13 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(player::AudioPlayer::new())
+        .setup(|app| {
+            library_watch::start(app.handle().clone());
+            media::start(app.handle().clone());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
-            greet, 
+            greet,
             commands::scan_music_dir,
             commands::get_cached_library,
             commands::get_song_art,
@@ -27,6 +37,10 @@ pub fn run() {
             commands::clear_cache,
             commands::get_cache_size,
             commands::play_track,
+            commands::preload_track,
+            commands::set_audio_effects,
+            media::update_media,
+            playlist::save_queue_playlist,
             commands::toggle_playback,
             commands::stop_playback,
             commands::seek_track,
@@ -45,7 +59,9 @@ pub fn run() {
             analytics::increment_play_count,
             analytics::get_play_stats,
             commands::update_song_metadata,
-            commands::get_playback_status
+            commands::relocate_music_file,
+            commands::get_playback_status,
+            commands::get_spectrum
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

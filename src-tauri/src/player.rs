@@ -1,213 +1,235 @@
-use std::thread;
-use std::sync::{mpsc, Arc, Mutex};
-use std::fs::File;
-use std::io::BufReader;
-use std::time::Duration;
-use rodio::{Decoder, Source, OutputStreamBuilder, Sink};
-use serde::Serialize;
+pub use crate::audio_source::PlaybackStatus;
+use crate::{
+    audio_source::{NextTrack, PlaybackSource, PreparedTrack, SharedStatus},
+    settings::AudioSettings,
+    spectrum::{SpectrumAnalyzer, SpectrumFrame, SpectrumTap},
+};
+use rodio::{OutputStream, OutputStreamBuilder, Sink};
+use std::{
+    sync::{mpsc, Arc, Mutex},
+    thread,
+};
 
-pub enum AudioCommand {
-    Play(String),
+enum AudioCommand {
+    Play(String, f64, bool),
     Toggle,
     Stop,
-    Seek(u64),
-    SetVolume(f32),
+    Seek(f64),
+    Volume(f32),
+    Preload(Option<String>, u64),
+    Effects(AudioSettings),
 }
-
-/// Shared state that the audio thread updates and the main thread reads.
-struct SharedSinkState {
-    sink: Sink,
-}
-
-#[derive(Serialize, Clone)]
-pub struct PlaybackStatus {
-    pub position_secs: f64,
-    pub finished: bool,
-}
-
+type Reply = mpsc::Sender<Result<PlaybackStatus, String>>;
 pub struct AudioPlayer {
-    sender: Mutex<mpsc::Sender<AudioCommand>>,
-    shared: Arc<Mutex<Option<SharedSinkState>>>,
+    sender: mpsc::Sender<(AudioCommand, Reply)>,
+    shared: SharedStatus,
+    spectrum: Arc<SpectrumAnalyzer>,
 }
-
+struct Worker {
+    stream: Option<OutputStream>,
+    sink: Option<Sink>,
+    shared: SharedStatus,
+    spectrum: Arc<SpectrumAnalyzer>,
+    next: NextTrack,
+    effects: Arc<Mutex<AudioSettings>>,
+    volume: f32,
+    serial: u64,
+}
+impl Worker {
+    fn replace(
+        &mut self,
+        path: String,
+        seconds: f64,
+        paused: bool,
+        keep_generation: bool,
+    ) -> Result<(), String> {
+        if self.stream.is_none() {
+            self.stream = Some(
+                OutputStreamBuilder::open_default_stream()
+                    .map_err(|e| format!("Audio device unavailable: {}", e))?,
+            );
+        }
+        let generation = if keep_generation {
+            self.shared.lock().unwrap().generation
+        } else {
+            self.serial += 1;
+            self.serial
+        };
+        let track = PreparedTrack::open(path, generation, seconds)?;
+        let sink = Sink::connect_new(self.stream.as_ref().unwrap().mixer());
+        sink.set_volume(self.volume);
+        // New tracks start paused until the old sink has stopped, avoiding overlap.
+        sink.pause();
+        let upcoming = Arc::new(Mutex::new(None));
+        if let Some(old) = self.sink.take() {
+            old.stop();
+        }
+        self.next = upcoming.clone();
+        {
+            let mut state = self.shared.lock().unwrap();
+            state.paused = paused;
+            state.error = None;
+        }
+        sink.append(
+            PlaybackSource::new(track, upcoming, self.shared.clone(), self.effects.clone())
+                .with_spectrum(SpectrumTap::new(self.spectrum.clone())),
+        );
+        if !paused {
+            sink.play();
+        }
+        self.sink = Some(sink);
+        Ok(())
+    }
+    fn command(&mut self, command: AudioCommand) -> Result<(), String> {
+        match command {
+            AudioCommand::Play(path, seconds, paused) => self.replace(path, seconds, paused, false),
+            AudioCommand::Seek(seconds) => {
+                let status = self.shared.lock().unwrap().clone();
+                let path = status.path.ok_or("No track loaded")?;
+                self.replace(path, seconds, status.paused, false)
+            }
+            AudioCommand::Toggle => {
+                let sink = self.sink.as_ref().ok_or("No track loaded")?;
+                if self.shared.lock().unwrap().finished {
+                    return Err("Track finished; select a track to play".into());
+                }
+                let paused = !sink.is_paused();
+                if paused {
+                    sink.pause();
+                } else {
+                    sink.play();
+                }
+                self.shared.lock().unwrap().paused = paused;
+                Ok(())
+            }
+            AudioCommand::Stop => {
+                if let Some(sink) = self.sink.take() {
+                    sink.stop();
+                }
+                *self.next.lock().unwrap() = None;
+                let mut state = self.shared.lock().unwrap();
+                state.finished = true;
+                state.paused = true;
+                Ok(())
+            }
+            AudioCommand::Volume(volume) => {
+                if !volume.is_finite() {
+                    return Err("Volume must be finite".into());
+                }
+                self.volume = volume.clamp(0.0, 1.0);
+                self.spectrum.set_volume(self.volume);
+                if let Some(sink) = &self.sink {
+                    sink.set_volume(self.volume);
+                }
+                Ok(())
+            }
+            AudioCommand::Preload(path, generation) => {
+                // Do not apply an obsolete UI request after a transition.
+                if self.shared.lock().unwrap().generation != generation {
+                    return Ok(());
+                }
+                *self.next.lock().unwrap() = None;
+                let prepared = if let Some(path) = path {
+                    self.serial += 1;
+                    Some(PreparedTrack::open(path, self.serial, 0.0)?)
+                } else {
+                    None
+                };
+                // Lock order matches the source: next, then status.
+                let mut next = self.next.lock().unwrap();
+                if self.shared.lock().unwrap().generation == generation {
+                    *next = prepared;
+                }
+                Ok(())
+            }
+            AudioCommand::Effects(settings) => {
+                settings.validate()?;
+                *self.effects.lock().unwrap() = settings;
+                Ok(())
+            }
+        }
+    }
+}
 impl AudioPlayer {
     pub fn new() -> Self {
-        let (tx, rx) = mpsc::channel();
-        let shared: Arc<Mutex<Option<SharedSinkState>>> = Arc::new(Mutex::new(None));
-        let shared_clone = shared.clone();
-
-        // Spawn audio thread
+        let (sender, receiver) = mpsc::channel::<(AudioCommand, Reply)>();
+        let shared = Arc::new(Mutex::new(PlaybackStatus {
+            finished: true,
+            paused: true,
+            ..Default::default()
+        }));
+        let status = shared.clone();
+        let spectrum = SpectrumAnalyzer::new();
+        let analyzer = spectrum.clone();
         thread::spawn(move || {
-            // Create output stream using rodio 0.21 API
-            let stream = OutputStreamBuilder::open_default_stream()
-                .expect("Failed to open default audio stream");
-            let mixer = stream.mixer();
-
-            let mut current_path: Option<String> = None;
-            let mut current_volume: f32 = 0.5; // Default volume
-
-            // Initialize with an empty sink
-            {
-                let initial_sink = Sink::connect_new(&mixer);
-                initial_sink.set_volume(current_volume);
-                let mut guard = shared_clone.lock().unwrap();
-                *guard = Some(SharedSinkState { sink: initial_sink });
-            }
-
-            loop {
-                if let Ok(command) = rx.recv() {
-                    match command {
-                        AudioCommand::Play(path) => {
-                            current_path = Some(path.clone());
-
-                            // FORCE RESET: Create a brand new Sink for every track.
-                            // This ensures no leftover buffers, timing offsets, or "finished" states
-                            // persist from the previous track.
-                            let new_sink = Sink::connect_new(&mixer);
-                            new_sink.set_volume(current_volume);
-
-                            match File::open(&path) {
-                                Ok(file) => {
-                                    let reader = BufReader::new(file);
-                                    match Decoder::new(reader) {
-                                        Ok(source) => {
-                                            new_sink.append(source);
-                                            new_sink.play();
-                                        },
-                                        Err(e) => eprintln!("Error decoding: {}", e),
-                                    }
-                                },
-                                Err(e) => eprintln!("Error opening file: {}", e),
-                            }
-
-                            // Swap sink into shared state
-                            let mut guard = shared_clone.lock().unwrap();
-                            *guard = Some(SharedSinkState { sink: new_sink });
-                        },
-                        AudioCommand::Toggle => {
-                            let guard = shared_clone.lock().unwrap();
-                            if let Some(ref state) = *guard {
-                                if state.sink.is_paused() {
-                                    state.sink.play();
-                                } else {
-                                    state.sink.pause();
-                                }
-                            }
-                        },
-                        AudioCommand::Stop => {
-                            let guard = shared_clone.lock().unwrap();
-                            if let Some(ref state) = *guard {
-                                state.sink.stop();
-                            }
-                        },
-                        AudioCommand::Seek(seconds) => {
-                            // Try native seeking first (fast)
-                            let seek_failed = {
-                                let guard = shared_clone.lock().unwrap();
-                                if let Some(ref state) = *guard {
-                                    state.sink.try_seek(Duration::from_secs(seconds)).is_err()
-                                } else {
-                                    true
-                                }
-                            };
-
-                            if seek_failed {
-                                // Fallback: re-open file and skip
-                                if let Some(ref path) = current_path {
-                                    let new_sink = Sink::connect_new(&mixer);
-                                    new_sink.set_volume(current_volume);
-
-                                    match File::open(path) {
-                                        Ok(file) => {
-                                            let reader = BufReader::new(file);
-                                            match Decoder::new(reader) {
-                                                Ok(source) => {
-                                                    new_sink.append(source.skip_duration(Duration::from_secs(seconds)));
-                                                    new_sink.play();
-                                                },
-                                                Err(e) => eprintln!("Error decoding for seek: {}", e),
-                                            }
-                                        },
-                                        Err(e) => eprintln!("Error opening file for seek: {}", e),
-                                    }
-
-                                    let mut guard = shared_clone.lock().unwrap();
-                                    *guard = Some(SharedSinkState { sink: new_sink });
-                                }
-                            }
-                        },
-                        AudioCommand::SetVolume(vol) => {
-                            current_volume = vol.clamp(0.0, 1.0);
-                            let guard = shared_clone.lock().unwrap();
-                            if let Some(ref state) = *guard {
-                                state.sink.set_volume(current_volume);
-                            }
-                        },
-                    }
-                }
+            let settings = crate::settings::load_settings().unwrap_or_default().audio;
+            let mut worker = Worker {
+                stream: None,
+                sink: None,
+                shared: status,
+                spectrum: analyzer,
+                next: Arc::new(Mutex::new(None)),
+                effects: Arc::new(Mutex::new(settings)),
+                volume: 0.5,
+                serial: 0,
+            };
+            while let Ok((command, reply)) = receiver.recv() {
+                let result = worker
+                    .command(command)
+                    .map(|_| worker.shared.lock().unwrap().clone());
+                let _ = reply.send(result);
             }
         });
-
         Self {
-            sender: Mutex::new(tx),
+            sender,
             shared,
+            spectrum,
         }
     }
-
-    /// Get the actual playback position and whether the track has finished.
+    fn request(&self, command: AudioCommand) -> Result<PlaybackStatus, String> {
+        let (tx, rx) = mpsc::channel();
+        self.sender
+            .send((command, tx))
+            .map_err(|_| "Audio worker unavailable".to_string())?;
+        rx.recv().map_err(|_| "Audio worker stopped".to_string())?
+    }
+    pub fn spectrum(&self) -> SpectrumFrame {
+        self.spectrum.frame(&self.get_status())
+    }
     pub fn get_status(&self) -> PlaybackStatus {
-        let guard = self.shared.lock().unwrap();
-        if let Some(ref state) = *guard {
-            PlaybackStatus {
-                position_secs: state.sink.get_pos().as_secs_f64(),
-                finished: state.sink.empty(),
-            }
-        } else {
-            PlaybackStatus {
-                position_secs: 0.0,
-                finished: true,
-            }
+        self.shared.lock().unwrap().clone()
+    }
+    pub fn play(&self, path: String, seconds: f64, paused: bool) -> Result<PlaybackStatus, String> {
+        if !seconds.is_finite() || !(0.0..=31_536_000.0).contains(&seconds) {
+            return Err("Invalid playback position".into());
         }
+        self.request(AudioCommand::Play(path, seconds, paused))
     }
-
-    pub fn play(&self, path: String) -> Result<(), String> {
-        self.sender
-            .lock()
-            .map_err(|_| "Failed to lock sender".to_string())?
-            .send(AudioCommand::Play(path))
-            .map_err(|e| e.to_string())
+    pub fn pause_toggle(&self) -> Result<PlaybackStatus, String> {
+        self.request(AudioCommand::Toggle)
     }
-
-    pub fn pause_toggle(&self) -> Result<(), String> {
-        self.sender
-            .lock()
-            .map_err(|_| "Failed to lock sender".to_string())?
-            .send(AudioCommand::Toggle)
-            .map_err(|e| e.to_string())
+    pub fn stop(&self) -> Result<PlaybackStatus, String> {
+        self.request(AudioCommand::Stop)
     }
-
-    pub fn stop(&self) -> Result<(), String> {
-        self.sender
-            .lock()
-            .map_err(|_| "Failed to lock sender".to_string())?
-            .send(AudioCommand::Stop)
-            .map_err(|e| e.to_string())
+    pub fn seek(&self, seconds: f64) -> Result<PlaybackStatus, String> {
+        if !seconds.is_finite() || !(0.0..=31_536_000.0).contains(&seconds) {
+            return Err("Invalid seek position".into());
+        }
+        self.request(AudioCommand::Seek(seconds))
     }
-
-    pub fn seek(&self, seconds: u64) -> Result<(), String> {
-        self.sender
-            .lock()
-            .map_err(|_| "Failed to lock sender".to_string())?
-            .send(AudioCommand::Seek(seconds))
-            .map_err(|e| e.to_string())
+    pub fn set_volume(&self, volume: f32) -> Result<PlaybackStatus, String> {
+        self.request(AudioCommand::Volume(volume))
     }
-
-    pub fn set_volume(&self, volume: f32) -> Result<(), String> {
-        self.sender
-            .lock()
-            .map_err(|_| "Failed to lock sender".to_string())?
-            .send(AudioCommand::SetVolume(volume))
-            .map_err(|e| e.to_string())
+    pub fn preload(&self, path: Option<String>, generation: u64) -> Result<PlaybackStatus, String> {
+        self.request(AudioCommand::Preload(path, generation))
+    }
+    pub fn set_effects(&self, settings: AudioSettings) -> Result<PlaybackStatus, String> {
+        self.request(AudioCommand::Effects(settings))
     }
 }
 
+impl Default for AudioPlayer {
+    fn default() -> Self {
+        Self::new()
+    }
+}

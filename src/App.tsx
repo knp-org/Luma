@@ -1,5 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { QueueEditor } from "./components/QueueEditor";
 import { exit } from "@tauri-apps/plugin-process";
 import { Song } from "./models";
 import { usePlayer, usePlaylists, useLibrary, usePlaybackPersistence } from "./hooks";
@@ -20,7 +23,7 @@ import {
 } from "./components";
 import { GlassButton, GlassModal} from "@knp-org/liquid-glass-ui";
 
-type View = "library" | "albums" | "playlists" | "settings" | "genres" | "favorites" | "analytics";
+type View = "library" | "albums" | "playlists" | "settings" | "genres" | "favorites" | "analytics" | "queue";
 
 function App() {
   // View State
@@ -42,9 +45,6 @@ function App() {
   }, []);
 
 
-  // Wait, I need access to `handleConfirmExit` and playback controls.
-  // I will check `usePlayer` content first in next step. For now I will hold off on this chunk.
-
   const handleConfirmExit = async () => {
     try {
       // Race saveState with a 1-second timeout
@@ -63,8 +63,9 @@ function App() {
     songs,
     setSongs,
     loading,
-    path,
-    seekInterval,
+    settings,
+    warnings,
+    locateMissing,
     syncProgress,
     cacheSize,
     scanMusic,
@@ -88,7 +89,13 @@ function App() {
     setIsShuffle,
     loopMode,
     setLoopMode,
-    playTrackInternal,
+    playIndex,
+    addToQueue,
+    moveQueue,
+    removeFromQueue,
+    stop,
+    error,
+    clearError,
     playSong,
     togglePlay,
     toggleShuffle,
@@ -100,17 +107,23 @@ function App() {
     seekBackward,
     handleVolumeChange,
     handlePlayPlaylist,
-  } = usePlayer({ songs, seekInterval });
+  } = usePlayer({ songs, seekInterval: settings.seek_interval });
 
   // Playlists Hook
   const {
     playlists,
+    loadPlaylists,
     addToPlaylist,
     isFavorite,
     handleToggleFavorite,
     menuOpenFor,
     setMenuOpenFor,
   } = usePlaylists({ currentSong });
+
+  const favoriteSongs = useMemo(() => {
+    const paths = new Set(playlists.find(playlist => playlist.name === "Favorites")?.tracks ?? []);
+    return songs.filter(song => paths.has(song.path));
+  }, [songs, playlists]);
 
   // Playback Persistence Hook
   const { saveState } = usePlaybackPersistence({
@@ -129,30 +142,64 @@ function App() {
     setLoopMode,
   });
 
-  // Handle Sleep Timer
+  const controls = useRef({ isPlaying, togglePlay, nextTrack, prevTrack, stop, seekTo, currentTime, handleVolumeChange, handleConfirmExit });
+  controls.current = { isPlaying, togglePlay, nextTrack, prevTrack, stop, seekTo, currentTime, handleVolumeChange, handleConfirmExit };
   useEffect(() => {
     if (!sleepTimer) return;
+    const timeout = window.setTimeout(() => {
+      setSleepTimer(null);
+      const current = controls.current;
+      if (sleepTimer.action === 'quit') void current.handleConfirmExit();
+      else if (current.isPlaying) void current.togglePlay();
+    }, Math.max(0, sleepTimer.endTime - Date.now()));
+    return () => clearTimeout(timeout);
+  }, [sleepTimer]);
 
-    const interval = setInterval(() => {
-      if (Date.now() >= sleepTimer.endTime) {
-        setSleepTimer(null);
-        if (sleepTimer.action === 'stop') {
-          if (isPlaying) {
-            togglePlay();
-          }
-        } else if (sleepTimer.action === 'quit') {
-          handleConfirmExit();
-        }
+  useEffect(() => {
+    const subscription = listen<{ action: string; value: number }>('media-control', ({ payload }) => {
+      const current = controls.current;
+      switch (payload.action) {
+        case 'play': if (!current.isPlaying) void current.togglePlay(); break;
+        case 'pause': if (current.isPlaying) void current.togglePlay(); break;
+        case 'toggle': void current.togglePlay(); break;
+        case 'next': void current.nextTrack(); break;
+        case 'previous': void current.prevTrack(); break;
+        case 'stop': void current.stop(); break;
+        case 'seek': void current.seekTo(payload.value); break;
+        case 'seekBy': void current.seekTo(current.currentTime + payload.value); break;
+        case 'volume': void current.handleVolumeChange(payload.value); break;
+        case 'quit': setShowExitConfirm(true); break;
       }
-    }, 1000);
+    });
+    return () => { subscription.then(unlisten => unlisten()).catch(console.error); };
+  }, []);
+  useEffect(() => {
+    void invoke('update_media', { state: {
+      title: currentSong?.title || currentSong?.path.split('/').pop() || null,
+      artist: currentSong?.artist || null, album: currentSong?.album || null,
+      duration: currentSong?.duration_seconds || 0, position: currentTime, playing: isPlaying, volume,
+    } }).catch(console.error);
+  }, [currentSong, Math.floor(currentTime), isPlaying, volume]);
 
-    return () => clearInterval(interval);
-  }, [sleepTimer, isPlaying, togglePlay]);
+  useEffect(() => {
+    const relocated = (event: Event) => {
+      const { oldPath, song } = (event as CustomEvent<{ oldPath: string; song: Song }>).detail;
+      setQueue(queue => queue.map(item => item.path === oldPath ? song : item));
+    };
+    window.addEventListener('song-relocated', relocated);
+    return () => window.removeEventListener('song-relocated', relocated);
+  }, []);
+  useEffect(() => {
+    if (!songs.length) return;
+    const byPath = new Map(songs.map(song => [song.path, song]));
+    setQueue(queue => queue.map(song => byPath.get(song.path) ?? song));
+  }, [songs]);
 
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement) {
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && (focused.matches('input, textarea, select, button, [contenteditable="true"]') || focused.closest('[role="dialog"]'))) {
         return;
       }
 
@@ -207,10 +254,10 @@ function App() {
           onToggleLoop={toggleLoop}
           queue={queue}
           currentIndex={currentIndex}
-          onPlayIndex={async (index) => {
-            setCurrentIndex(index);
-            await playTrackInternal(queue[index].path);
-          }}
+          onPlayIndex={playIndex}
+          onMoveQueue={moveQueue}
+          onRemoveQueue={removeFromQueue}
+          onQueueSaved={loadPlaylists}
           isFavorite={isFavorite}
           onToggleFavorite={handleToggleFavorite}
           sleepTimer={sleepTimer ? {
@@ -247,11 +294,19 @@ function App() {
         <main className="flex-1 flex flex-col min-w-0 relative">
           <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-sm -z-10"></div>
 
+          <div className="md:hidden p-2 border-b border-white/10">
+            <select aria-label="View" className="bg-neutral-900 p-2 rounded w-full" value={currentView} onChange={e => setCurrentView(e.target.value as View)}>
+              {['library', 'albums', 'genres', 'playlists', 'favorites', 'queue', 'analytics', 'settings'].map(view => <option key={view} value={view}>{view[0].toUpperCase() + view.slice(1)}</option>)}
+            </select>
+          </div>
+          {currentView === 'queue' && <div className="flex flex-col flex-1 min-h-0 pb-24"><h1 className="text-2xl font-bold p-4">Queue · {queue.length} tracks</h1><QueueEditor queue={queue} currentIndex={currentIndex} onPlayIndex={playIndex} onMove={moveQueue} onRemove={removeFromQueue} onSaved={loadPlaylists} /></div>}
           {currentView === "settings" && (
             <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hidden">
               <Settings
-                path={path}
-                seekInterval={seekInterval}
+                settings={settings}
+                songs={songs}
+                warnings={warnings}
+                onLocate={locateMissing}
                 onSave={saveSettings}
                 scanMusic={() => scanMusic()}
                 onClearCache={handleClearCache}
@@ -264,7 +319,7 @@ function App() {
 
           {currentView === "playlists" && (
             <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hidden">
-              <Playlists songs={songs} onPlayPlaylist={handlePlayPlaylist} />
+              <Playlists songs={songs} playlists={playlists} onRefresh={loadPlaylists} onPlayPlaylist={handlePlayPlaylist} />
             </div>
           )}
 
@@ -289,13 +344,14 @@ function App() {
               title="Favorites"
               emptyMessage="No favorite songs yet."
               showSyncButton={false}
-              songs={songs.filter(s => playlists.find(p => p.name === "Favorites")?.tracks.includes(s.path))}
+              songs={favoriteSongs}
               loading={loading}
               currentSong={currentSong}
               isPlaying={isPlaying}
               playlists={playlists}
               menuOpenFor={menuOpenFor}
               onPlaySong={playSong}
+              onQueue={addToQueue}
               onMenuToggle={setMenuOpenFor}
               onAddToPlaylist={addToPlaylist}
               onShowSongInfo={setInfoSong}
@@ -312,6 +368,7 @@ function App() {
               playlists={playlists}
               menuOpenFor={menuOpenFor}
               onPlaySong={playSong}
+              onQueue={addToQueue}
               onMenuToggle={setMenuOpenFor}
               onAddToPlaylist={addToPlaylist}
               onShowSongInfo={setInfoSong}
@@ -357,6 +414,7 @@ function App() {
         onCancelSleepTimer={() => setSleepTimer(null)}
       />
 
+      {error && <div role="alert" className="fixed bottom-28 left-4 right-4 z-[4000] bg-neutral-900 border border-red-400/50 rounded-xl p-4 flex gap-3 items-center shadow-xl"><span className="flex-1 text-sm">{error}</span><GlassButton onClick={clearError}>Dismiss</GlassButton></div>}
       {/* SongInfoModal */}
       {infoSong && (
         <SongInfoModal

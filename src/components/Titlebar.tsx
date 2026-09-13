@@ -4,20 +4,16 @@ import { GlassButton } from '@knp-org/liquid-glass-ui';
 import { IconTitlebarMinimize, IconTitlebarMaximize, IconTitlebarUnmaximize, IconTitlebarClose } from '@knp-org/liquid-glass-ui';
 
 export function Titlebar() {
-    const appWindow = getCurrentWindow();
+    const [appWindow] = useState(() => getCurrentWindow());
     const [isMaximized, setIsMaximized] = useState(false);
 
     useEffect(() => {
         appWindow.isMaximized().then(setIsMaximized).catch(() => {});
         
-        let unlisten: () => void;
-        appWindow.onResized(() => {
+        const subscription = appWindow.onResized(() => {
             appWindow.isMaximized().then(setIsMaximized).catch(() => {});
-        }).then(u => { unlisten = u; }).catch(() => {});
-
-        return () => {
-            if (unlisten) unlisten();
-        };
+        });
+        return () => { subscription.then(unlisten => unlisten()).catch(() => {}); };
     }, [appWindow]);
 
     const handleDrag = (e: React.PointerEvent) => {

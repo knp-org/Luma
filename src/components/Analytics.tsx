@@ -100,6 +100,8 @@ export function Analytics({ songs, onPlaySong }: AnalyticsProps) {
 
     useEffect(() => {
         loadStats();
+        window.addEventListener('play-stats-changed', loadStats);
+        return () => window.removeEventListener('play-stats-changed', loadStats);
     }, []);
 
     async function loadStats() {
@@ -350,8 +352,11 @@ export function Analytics({ songs, onPlaySong }: AnalyticsProps) {
                         </Section>
                     </div>
 
-                    {/* Metadata health */}
-                    <Section title="Metadata Health">
+                    {/* GlassTable already provides its own glass surface. */}
+                    <div className="min-w-0">
+                        <GlassHeading as="h2" className="text-lg font-bold text-white mb-3">
+                            Metadata Health
+                        </GlassHeading>
                         <GlassTable
                             headers={['Field', 'Missing', 'Complete']}
                             rows={([
@@ -371,7 +376,7 @@ export function Analytics({ songs, onPlaySong }: AnalyticsProps) {
                                 ];
                             })}
                         />
-                    </Section>
+                    </div>
                 </div>
             )}
         </div>

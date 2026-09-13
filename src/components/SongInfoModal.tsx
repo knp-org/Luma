@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { updateSongMetadata } from '../services/metadata';
 import { Song } from '../types';
 import { AlbumArt } from './AlbumArt';
 import { useModal } from '../hooks/useModal';
@@ -31,14 +31,14 @@ export function SongInfoModal({ song, onClose, onSongUpdate }: SongInfoModalProp
             const yearNum = editedYear ? parseInt(editedYear) || null : null;
             const trackNum = editedTrack ? parseInt(editedTrack) || null : null;
 
-            await invoke("update_song_metadata", {
+            await updateSongMetadata({
                 path: song.path,
                 title: editedTitle,
                 artist: editedArtist,
                 album: editedAlbum,
                 genre: editedGenre,
                 year: yearNum,
-                track_number: trackNum
+                trackNumber: trackNum
             });
 
             if (onSongUpdate) {

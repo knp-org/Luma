@@ -1,3 +1,4 @@
+import { SmartPlaylists } from './SmartPlaylists';
 import { useState, useEffect, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Playlist, Song } from '../types';
@@ -8,11 +9,12 @@ import { IconMusicNote, IconPlaySolid, IconShuffle, IconTrash } from '@knp-org/l
 
 interface PlaylistsProps {
     songs: Song[];
+    playlists: Playlist[];
+    onRefresh: () => Promise<void>;
     onPlayPlaylist: (playlistSongs: Song[], startIndex?: number, shuffle?: boolean) => void;
 }
 
-export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
-    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+export function Playlists({ songs, playlists, onRefresh, onPlayPlaylist }: PlaylistsProps) {
     const [newPlaylistName, setNewPlaylistName] = useState("");
     const [creating, setCreating] = useState(false);
     const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
@@ -34,16 +36,12 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
 
         window.addEventListener('delete-playlist', handleDelete);
         return () => window.removeEventListener('delete-playlist', handleDelete);
-    }, []);
+    }, [onRefresh]);
 
-    async function loadPlaylists() {
-        try {
-            const result = await invoke<Playlist[]>("get_playlists");
-            setPlaylists(result);
-        } catch (e) {
-            console.error(e);
-        }
-    }
+    const loadPlaylists = onRefresh;
+    useEffect(() => {
+        setSelectedPlaylist(previous => previous ? playlists.find(p => p.name === previous.name) ?? null : null);
+    }, [playlists]);
 
     async function createPlaylist(e: React.FormEvent) {
         e.preventDefault();
@@ -233,6 +231,7 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
                 </div>
             ) : (
                 <>
+                    <SmartPlaylists songs={songs} onPlay={tracks => onPlayPlaylist(tracks)} />
                     {/* Create New */}
                     <form onSubmit={createPlaylist} className="mb-8 flex gap-2">
                         <GlassInput
@@ -250,7 +249,7 @@ export function Playlists({ songs, onPlayPlaylist }: PlaylistsProps) {
                     </form>
 
                     {/* Grid */}
-                    <div className="grid grid-cols-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                         {playlists.map((pl, idx) => (
                             <PlaylistCard
                                 key={idx}
@@ -275,7 +274,7 @@ function PlaylistCard({ playlist, songs, onSelect }: { playlist: Playlist, songs
 
         // Randomize
         return [...plSongs].sort(() => 0.5 - Math.random()).slice(0, 4);
-    }, [playlist.tracks.length, songs.length]); // Dependencies: only recalc if counts change to avoid frequent updates
+    }, [playlist.tracks, songs]); // Dependencies: only recalc if counts change to avoid frequent updates
 
     return (
         <GlassCard

@@ -5,7 +5,7 @@ import { GlassButton, GlassCard, GlassHeading, GlassText, GlassBadge, GlassSpinn
 
 interface AlbumsProps {
     songs: Song[];
-    onPlaySong: (song: Song) => void;
+    onPlaySong: (song: Song, context?: Song[]) => void;
 }
 
 interface AlbumGroup {
@@ -106,10 +106,10 @@ export function Albums({ songs, onPlaySong }: AlbumsProps) {
 
                 <div className="flex-1 overflow-y-auto scrollbar-hidden">
                     <div className="grid grid-cols-1 gap-1">
-                        {selectedAlbum.songs.sort((a, b) => (a.track_number || 0) - (b.track_number || 0)).map((song, idx) => (
+                        {[...selectedAlbum.songs].sort((a, b) => (a.track_number || 0) - (b.track_number || 0)).map((song, idx) => (
                             <div
                                 key={idx}
-                                onClick={() => onPlaySong(song)}
+                                onClick={() => onPlaySong(song, [...selectedAlbum.songs].sort((a, b) => (a.track_number || 0) - (b.track_number || 0)))}
                                 className="flex items-center gap-4 p-3 text-white/80 hover:bg-white/5 rounded-xl cursor-pointer transition-all border border-transparent hover:border-white/5 group"
                             >
                                 <div className="text-white/20 w-8 text-right font-mono text-sm group-hover:text-white/40 transition-colors">

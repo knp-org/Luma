@@ -12,7 +12,7 @@ import {
     IconSettings
 } from "@knp-org/liquid-glass-ui";
 
-type View = "library" | "albums" | "playlists" | "settings" | "genres" | "favorites" | "analytics";
+type View = "library" | "albums" | "playlists" | "settings" | "genres" | "favorites" | "analytics" | "queue";
 
 interface SidebarProps {
     currentView: View;
@@ -21,7 +21,7 @@ interface SidebarProps {
 
 export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     return (
-        <aside className="w-64 bg-white/5 backdrop-blur-2xl border-r border-white/10 flex flex-col p-6 gap-6 hidden md:flex z-20 shadow-2xl">
+        <aside data-sidebar className="w-64 bg-white/5 backdrop-blur-2xl border-r border-white/10 flex flex-col p-6 gap-6 hidden md:flex z-20 shadow-2xl">
             <div className="flex items-center gap-4 px-2">
                 <img
                     src={logo}
@@ -69,6 +69,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                     active={currentView === "analytics"}
                     onClick={() => onViewChange("analytics")}
                 />
+                <SidebarItem label="Queue" icon={<IconPlaylists />} active={currentView === "queue"} onClick={() => onViewChange("queue")} />
                 <GlassDivider className="my-2" />
                 <SidebarItem
                     label="Settings"

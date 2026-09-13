@@ -6,7 +6,7 @@ import { GlassButton, GlassCard, GlassHeading, GlassText, GlassBadge, GlassSpinn
 
 interface GenresProps {
     songs: Song[];
-    onPlaySong: (song: Song) => void;
+    onPlaySong: (song: Song, context?: Song[]) => void;
 }
 
 interface GenreGroup {
@@ -104,7 +104,7 @@ export function Genres({ songs, onPlaySong }: GenresProps) {
                         {selectedGenre.songs.sort((a, b) => (a.title || "").localeCompare(b.title || "")).map((song, idx) => (
                             <div
                                 key={idx}
-                                onClick={() => onPlaySong(song)}
+                                onClick={() => onPlaySong(song, selectedGenre.songs)}
                                 className="flex items-center gap-4 p-3 text-white/80 hover:bg-white/5 rounded-xl cursor-pointer transition-all border border-transparent hover:border-white/5 group"
                             >
                                 <div className="text-white/20 w-8 text-right font-mono text-sm group-hover:text-white/40 transition-colors">

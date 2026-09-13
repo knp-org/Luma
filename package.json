@@ -11,10 +11,12 @@
     "build:deb": "npm run tauri -- build -b deb",
     "build:appimage": "npm run tauri -- build -b appimage",
     "build:rpm": "npm run tauri -- build -b rpm",
-    "build:all": "npm run tauri -- build"
+    "build:all": "npm run tauri -- build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "@knp-org/liquid-glass-ui": "file:../liquid-glass-ui",
+    "@knp-org/liquid-glass-ui": "file:vendor/knp-org-liquid-glass-ui-1.0.8.tgz",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-process": "^2.3.1",
@@ -25,11 +27,17 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "@tauri-apps/cli": "^2",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^4.6.0",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.8.3",
-    "vite": "^7.2.6"
+    "vite": "^7.2.6",
+    "vitest": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

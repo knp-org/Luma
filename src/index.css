@@ -140,6 +140,11 @@ body .glass-modal-backdrop {
     backdrop-filter: blur(10px);
 }
 
+/* Keep player control icons at their requested size inside tight flex layouts. */
+[data-player-controls] svg {
+    flex-shrink: 0;
+}
+
 /* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
     width: 8px;
@@ -185,4 +190,43 @@ html::-webkit-scrollbar,
 body::-webkit-scrollbar,
 #root::-webkit-scrollbar {
     display: none;
+}
+
+/* Keep the player usable when the desktop window is resized below the sidebar breakpoint. */
+.luma-player-content { justify-content: flex-start; }
+.luma-player-content > :first-child { margin-top: auto; }
+.luma-player-content > :last-child { margin-bottom: auto; }
+
+.luma-visualizer {
+    position: relative;
+    width: 100%;
+    max-width: 32rem;
+    height: clamp(56px, 10vh, 88px);
+    margin-bottom: 10px;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+.luma-visualizer canvas { display: block; width: 100%; height: 100%; }
+.luma-visualizer-status {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(16, 16, 16, 0.85);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+[data-player-bar] { flex-shrink: 0; }
+@media (max-width: 767px) {
+    aside[data-sidebar] { display: none; }
+    [data-player-bar] {
+        height: auto;
+        grid-template-columns: minmax(0, 1fr);
+        padding: 12px;
+        gap: 8px;
+    }
+    [data-player-bar] > :last-child { display: none; }
 }
